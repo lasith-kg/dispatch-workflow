@@ -106,7 +106,7 @@ The workflow_dispatch method supports dispatching workflows from non-default bra
         }
         if (dispatchMethod === DispatchMethod.WorkflowDispatch && !ref) {
             throw new Error(`
-A valid git reference must be provided to the 'ref' input if using the workflow_dispatch method.
+A valid git reference must be provided to the 'ref' input, if using the workflow_dispatch method.
 Can be formatted as 'main' or 'refs/heads/main'`);
         }
     }
@@ -124,7 +124,7 @@ function getEventType(dispatchMethod) {
     try {
         if (dispatchMethod === DispatchMethod.RepositoryDispatch && !eventType) {
             throw new Error(`
-An event-type must be provided to the 'event-type' input if using the repository_dispatch method.`);
+An event-type must be provided to the 'event-type' input, if using the repository_dispatch method.`);
         }
         if (dispatchMethod === DispatchMethod.WorkflowDispatch && !!eventType) {
             throw new Error(`
@@ -140,8 +140,31 @@ The 'event-type' input is not supported for the workflow_dispatch method and mus
     }
     return eventType || undefined;
 }
+function getWorkflow(dispatchMethod) {
+    const workflow = core.getInput('workflow');
+    try {
+        if (dispatchMethod === DispatchMethod.WorkflowDispatch && !workflow) {
+            throw new Error(`
+A workflow file name or ID must be provided to the 'workflow' input, if using the workflow_dispatch method`);
+        }
+        if (dispatchMethod === DispatchMethod.RepositoryDispatch && !!workflow) {
+            throw new Error(`
+The 'workflow' input is not supported for the repository_dispatch method and must be ignored.`);
+        }
+    }
+    catch (error) {
+        core.error(`Failed to parse workflow`);
+        if (error instanceof Error) {
+            error.stack && core.debug(error.stack);
+        }
+        throw error;
+    }
+    if (dispatchMethod === DispatchMethod.WorkflowDispatch) {
+        return getNumberFromValue(workflow) || workflow;
+    }
+    return undefined;
+}
 function getConfig() {
-    const workflow = core.getInput('workflow', { required: true });
     const dispatchMethod = getDispatchMethod();
     return {
         dispatchMethod,
@@ -149,7 +172,7 @@ function getConfig() {
         repo: core.getInput('repo', { required: true }),
         owner: core.getInput('owner', { required: true }),
         ref: getRef(dispatchMethod),
-        workflow: getNumberFromValue(workflow) || workflow,
+        workflow: getWorkflow(dispatchMethod),
         workflowInputs: getWorkflowInputs(),
         workflowTimeoutSeconds: getNumberFromValue(core.getInput('workflow-timeout-seconds')) ||
             WORKFLOW_TIMEOUT_SECONDS,
@@ -357,15 +380,12 @@ function run() {
         try {
             const config = (0, action_1.getConfig)();
             api.init(config);
-            let workflowId;
             // Get the workflow ID if give a string
             if (typeof config.workflow === 'string') {
                 core.info(`Fetching Workflow ID for ${config.workflow}...`);
-                workflowId = yield api.getWorkflowId(config.workflow);
+                const workflowId = yield api.getWorkflowId(config.workflow);
                 core.info(`Fetched Workflow ID: ${workflowId}`);
-            }
-            else {
-                workflowId = config.workflow;
+                config.workflow = workflowId;
             }
             // Dispatch the action
             if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {

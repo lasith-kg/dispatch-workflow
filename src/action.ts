@@ -37,7 +37,7 @@ export interface ActionConfig {
   /**
    * Workflow to return an ID for. Can be the ID or the workflow filename.
    */
-  workflow: string | number
+  workflow?: string | number
 
   /**
    * A flat JSON object, only supports strings (as per workflow inputs API).
@@ -141,7 +141,7 @@ The workflow_dispatch method supports dispatching workflows from non-default bra
     }
     if (dispatchMethod === DispatchMethod.WorkflowDispatch && !ref) {
       throw new Error(`
-A valid git reference must be provided to the 'ref' input if using the workflow_dispatch method.
+A valid git reference must be provided to the 'ref' input, if using the workflow_dispatch method.
 Can be formatted as 'main' or 'refs/heads/main'`)
     }
   } catch (error) {
@@ -160,7 +160,7 @@ function getEventType(dispatchMethod: DispatchMethod): string | undefined {
   try {
     if (dispatchMethod === DispatchMethod.RepositoryDispatch && !eventType) {
       throw new Error(`
-An event-type must be provided to the 'event-type' input if using the repository_dispatch method.`)
+An event-type must be provided to the 'event-type' input, if using the repository_dispatch method.`)
     }
     if (dispatchMethod === DispatchMethod.WorkflowDispatch && !!eventType) {
       throw new Error(`
@@ -177,8 +177,35 @@ The 'event-type' input is not supported for the workflow_dispatch method and mus
   return eventType || undefined
 }
 
+function getWorkflow(
+  dispatchMethod: DispatchMethod
+): string | number | undefined {
+  const workflow = core.getInput('workflow')
+
+  try {
+    if (dispatchMethod === DispatchMethod.WorkflowDispatch && !workflow) {
+      throw new Error(`
+A workflow file name or ID must be provided to the 'workflow' input, if using the workflow_dispatch method`)
+    }
+    if (dispatchMethod === DispatchMethod.RepositoryDispatch && !!workflow) {
+      throw new Error(`
+The 'workflow' input is not supported for the repository_dispatch method and must be ignored.`)
+    }
+  } catch (error) {
+    core.error(`Failed to parse workflow`)
+    if (error instanceof Error) {
+      error.stack && core.debug(error.stack)
+    }
+    throw error
+  }
+
+  if (dispatchMethod === DispatchMethod.WorkflowDispatch) {
+    return getNumberFromValue(workflow) || workflow
+  }
+  return undefined
+}
+
 export function getConfig(): ActionConfig {
-  const workflow = core.getInput('workflow', {required: true})
   const dispatchMethod = getDispatchMethod()
 
   return {
@@ -187,7 +214,7 @@ export function getConfig(): ActionConfig {
     repo: core.getInput('repo', {required: true}),
     owner: core.getInput('owner', {required: true}),
     ref: getRef(dispatchMethod),
-    workflow: getNumberFromValue(workflow) || workflow,
+    workflow: getWorkflow(dispatchMethod),
     workflowInputs: getWorkflowInputs(),
     workflowTimeoutSeconds:
       getNumberFromValue(core.getInput('workflow-timeout-seconds')) ||

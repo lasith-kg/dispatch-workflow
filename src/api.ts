@@ -18,7 +18,7 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
     const response = await octokit.rest.actions.createWorkflowDispatch({
       owner: config.owner,
       repo: config.repo,
-      workflow_id: config.workflow,
+      workflow_id: config.workflow!,
       ref: config.ref || 'main',
       inputs: {
         ...(config.workflowInputs ? config.workflowInputs : undefined),

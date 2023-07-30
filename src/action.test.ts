@@ -26,7 +26,7 @@ describe('Action', () => {
         repo: 'repository',
         owner: 'owner',
         ref: 'feature_branch',
-        workflow: 'workflow',
+        workflow: 'workflow.yml',
         workflowInputs: JSON.stringify(workflowInputs),
         workflowTimeoutSeconds: '60',
         token: 'token',
@@ -84,7 +84,7 @@ describe('Action', () => {
       expect(config.repo).toStrictEqual('repository')
       expect(config.owner).toStrictEqual('owner')
       expect(config.ref).toStrictEqual('feature_branch')
-      expect(config.workflow).toStrictEqual('workflow')
+      expect(config.workflow).toStrictEqual('workflow.yml')
       expect(config.workflowInputs).toStrictEqual(workflowInputs)
       expect(config.workflowTimeoutSeconds).toStrictEqual(60)
       expect(config.token).toStrictEqual('token')
@@ -95,6 +95,7 @@ describe('Action', () => {
       let config: ActionConfig
 
       mockEnvConfig.dispatchMethod = 'repository_dispatch'
+      mockEnvConfig.workflow = ''
       mockEnvConfig.eventType = 'deploy'
       mockEnvConfig.ref = ''
       config = getConfig()
@@ -102,8 +103,10 @@ describe('Action', () => {
         DispatchMethod.RepositoryDispatch
       )
       expect(config.ref).toStrictEqual(undefined)
+      expect(config.workflow).toStrictEqual(undefined)
 
       mockEnvConfig.dispatchMethod = 'workflow_dispatch'
+      mockEnvConfig.workflow = 'workflow.yml'
       mockEnvConfig.eventType = ''
       mockEnvConfig.ref = 'feature_branch'
       config = getConfig()
@@ -111,6 +114,7 @@ describe('Action', () => {
         DispatchMethod.WorkflowDispatch
       )
       expect(config.ref).toStrictEqual('feature_branch')
+      expect(config.workflow).toStrictEqual('workflow.yml')
     })
 
     test('Should throw if unsuported dispatch method is provided', () => {
@@ -121,6 +125,7 @@ describe('Action', () => {
 
     test('Should throw an error if a ref is provided alongside the repository_dispatch method', () => {
       mockEnvConfig.dispatchMethod = 'repository_dispatch'
+      mockEnvConfig.workflow = ''
       mockEnvConfig.eventType = 'deploy'
       mockEnvConfig.ref = 'feature_branch'
 
@@ -129,7 +134,17 @@ describe('Action', () => {
 
     test('Should throw an error if no event-type is provided alongside the repository_dispatch method', () => {
       mockEnvConfig.dispatchMethod = 'repository_dispatch'
+      mockEnvConfig.workflow = ''
       mockEnvConfig.eventType = ''
+      mockEnvConfig.ref = ''
+
+      expect(() => getConfig()).toThrowError()
+    })
+
+    test('Should throw an error if a workflow is provided alongside the repository_dispatch method', () => {
+      mockEnvConfig.dispatchMethod = 'repository_dispatch'
+      mockEnvConfig.workflow = 'workflow.yml'
+      mockEnvConfig.eventType = 'deploy'
       mockEnvConfig.ref = ''
 
       expect(() => getConfig()).toThrowError()
@@ -137,6 +152,7 @@ describe('Action', () => {
 
     test('Should throw an error if a ref is not provided alongside the workflow_dispatch method', () => {
       mockEnvConfig.dispatchMethod = 'workflow_dispatch'
+      mockEnvConfig.workflow = 'workflow.yml'
       mockEnvConfig.eventType = ''
       mockEnvConfig.ref = ''
 
@@ -145,7 +161,17 @@ describe('Action', () => {
 
     test('Should throw an error if an event-type is provided alongside the workflow_dispatch method', () => {
       mockEnvConfig.dispatchMethod = 'workflow_dispatch'
+      mockEnvConfig.workflow = 'workflow.yml'
       mockEnvConfig.eventType = 'deploy'
+      mockEnvConfig.ref = 'feature_branch'
+
+      expect(() => getConfig()).toThrowError()
+    })
+
+    test('Should throw an error if no workflow is provided alongside the workflow_dispatch method', () => {
+      mockEnvConfig.dispatchMethod = 'workflow_dispatch'
+      mockEnvConfig.workflow = ''
+      mockEnvConfig.eventType = ''
       mockEnvConfig.ref = 'feature_branch'
 
       expect(() => getConfig()).toThrowError()

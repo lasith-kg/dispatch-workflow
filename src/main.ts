@@ -10,14 +10,12 @@ async function run(): Promise<void> {
     const config = getConfig()
     api.init(config)
 
-    let workflowId: number
     // Get the workflow ID if give a string
     if (typeof config.workflow === 'string') {
       core.info(`Fetching Workflow ID for ${config.workflow}...`)
-      workflowId = await api.getWorkflowId(config.workflow)
+      const workflowId = await api.getWorkflowId(config.workflow)
       core.info(`Fetched Workflow ID: ${workflowId}`)
-    } else {
-      workflowId = config.workflow
+      config.workflow = workflowId
     }
 
     // Dispatch the action
