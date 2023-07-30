@@ -15,7 +15,8 @@ jobs:
           npm install
       - run: |
           npm run all
-  test:
+  
+  integration-test:
     runs-on: ubuntu-latest
     if: ${{ github.actor != 'dependabot[bot]' }}
     permissions:
