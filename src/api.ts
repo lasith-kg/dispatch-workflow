@@ -19,9 +19,9 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
       owner: config.owner,
       repo: config.repo,
       workflow_id: config.workflow!,
-      ref: config.ref || 'main',
+      ref: config.ref!,
       inputs: {
-        ...(config.workflowInputs ? config.workflowInputs : undefined),
+        ...config.workflowInputs,
         distinct_id: distinctId
       }
     })
@@ -38,11 +38,7 @@ Repository: ${config.owner}/${config.repo}
 Branch: ${config.ref}
 Workflow ID: ${config.workflow}
 Distinct ID: ${distinctId}
-${
-  config.workflowInputs
-    ? `Workflow Inputs: ${JSON.stringify(config.workflowInputs)}`
-    : ``
-}`)
+Workflow Inputs: ${JSON.stringify(config.workflowInputs)}`)
   } catch (error) {
     if (error instanceof Error) {
       core.error(
@@ -62,7 +58,7 @@ export async function repositoryDispatch(distinctId: string): Promise<void> {
       repo: config.repo,
       event_type: config.eventType!,
       client_payload: {
-        ...(config.workflowInputs ? config.workflowInputs : undefined),
+        ...config.workflowInputs,
         distinct_id: distinctId
       }
     })
@@ -74,15 +70,11 @@ export async function repositoryDispatch(distinctId: string): Promise<void> {
     }
 
     core.info(`
-  Successfully dispatched workflow using repository_dispatch method:
-  Repository: ${config.owner}/${config.repo}
-  Branch: Default Branch
-  Distinct ID: ${distinctId}
-  ${
-    config.workflowInputs
-      ? `Client Payload: ${JSON.stringify(config.workflowInputs)}`
-      : ``
-  }`)
+Successfully dispatched workflow using repository_dispatch method:
+Repository: ${config.owner}/${config.repo}
+Branch: Default Branch
+Distinct ID: ${distinctId}
+Client Payload: ${JSON.stringify(config.workflowInputs)}`)
   } catch (error) {
     if (error instanceof Error) {
       core.error(

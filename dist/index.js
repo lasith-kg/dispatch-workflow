@@ -242,8 +242,8 @@ function workflowDispatch(distinctId) {
                 owner: config.owner,
                 repo: config.repo,
                 workflow_id: config.workflow,
-                ref: config.ref || 'main',
-                inputs: Object.assign(Object.assign({}, (config.workflowInputs ? config.workflowInputs : undefined)), { distinct_id: distinctId })
+                ref: config.ref,
+                inputs: Object.assign(Object.assign({}, config.workflowInputs), { distinct_id: distinctId })
             });
             if (response.status !== 204) {
                 throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);
@@ -254,9 +254,7 @@ Repository: ${config.owner}/${config.repo}
 Branch: ${config.ref}
 Workflow ID: ${config.workflow}
 Distinct ID: ${distinctId}
-${config.workflowInputs
-                ? `Workflow Inputs: ${JSON.stringify(config.workflowInputs)}`
-                : ``}`);
+Workflow Inputs: ${JSON.stringify(config.workflowInputs)}`);
         }
         catch (error) {
             if (error instanceof Error) {
@@ -276,19 +274,17 @@ function repositoryDispatch(distinctId) {
                 owner: config.owner,
                 repo: config.repo,
                 event_type: config.eventType,
-                client_payload: Object.assign(Object.assign({}, (config.workflowInputs ? config.workflowInputs : undefined)), { distinct_id: distinctId })
+                client_payload: Object.assign(Object.assign({}, config.workflowInputs), { distinct_id: distinctId })
             });
             if (response.status !== 204) {
                 throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);
             }
             core.info(`
-  Successfully dispatched workflow using repository_dispatch method:
-  Repository: ${config.owner}/${config.repo}
-  Branch: Default Branch
-  Distinct ID: ${distinctId}
-  ${config.workflowInputs
-                ? `Client Payload: ${JSON.stringify(config.workflowInputs)}`
-                : ``}`);
+Successfully dispatched workflow using repository_dispatch method:
+Repository: ${config.owner}/${config.repo}
+Branch: Default Branch
+Distinct ID: ${distinctId}
+Client Payload: ${JSON.stringify(config.workflowInputs)}`);
         }
         catch (error) {
             if (error instanceof Error) {
@@ -387,7 +383,7 @@ function run() {
                 core.info(`Fetched Workflow ID: ${workflowId}`);
                 config.workflow = workflowId;
             }
-            // Dispatch the action
+            // Dispatch the action using the chosen dispatch method
             if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
                 yield api.workflowDispatch(DISTINCT_ID);
             }

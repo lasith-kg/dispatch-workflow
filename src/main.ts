@@ -18,7 +18,7 @@ async function run(): Promise<void> {
       config.workflow = workflowId
     }
 
-    // Dispatch the action
+    // Dispatch the action using the chosen dispatch method
     if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
       await api.workflowDispatch(DISTINCT_ID)
     } else {

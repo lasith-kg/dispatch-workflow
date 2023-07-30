@@ -8,5 +8,10 @@ module.exports = {
   verbose: true,
   collectCoverage: true,
   collectCoverageFrom: ['./src/**'],
-  coveragePathIgnorePatterns: ['./src/main.ts']
+  coveragePathIgnorePatterns: ['./src/main.ts'],
+  coverageThreshold: {
+    global: {
+      lines: 90
+    }
+  }
 }
