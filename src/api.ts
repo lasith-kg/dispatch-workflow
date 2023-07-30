@@ -12,7 +12,7 @@ export function init(cfg?: ActionConfig): void {
   octokit = github.getOctokit(config.token)
 }
 
-export async function dispatchWorkflow(distinctId: string): Promise<void> {
+export async function workflowDispatch(distinctId: string): Promise<void> {
   try {
     // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
     const response = await octokit.rest.actions.createWorkflowDispatch({
@@ -33,7 +33,7 @@ export async function dispatchWorkflow(distinctId: string): Promise<void> {
     }
 
     core.info(`
-Successfully dispatched workflow:
+Successfully dispatched workflow using workflow_dispatch method:
 Repository: ${config.owner}/${config.repo}
 Branch: ${config.ref}
 Workflow ID: ${config.workflow}
@@ -46,7 +46,47 @@ ${
   } catch (error) {
     if (error instanceof Error) {
       core.error(
-        `dispatchWorkflow: An unexpected error has occurred: ${error.message}`
+        `workflowDispatch: An unexpected error has occurred: ${error.message}`
+      )
+      error.stack && core.debug(error.stack)
+    }
+    throw error
+  }
+}
+
+export async function repositoryDispatch(distinctId: string): Promise<void> {
+  try {
+    // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+    const response = await octokit.rest.repos.createDispatchEvent({
+      owner: config.owner,
+      repo: config.repo,
+      event_type: config.eventType!,
+      client_payload: {
+        ...(config.workflowInputs ? config.workflowInputs : undefined),
+        distinct_id: distinctId
+      }
+    })
+
+    if (response.status !== 204) {
+      throw new Error(
+        `Failed to dispatch action, expected 204 but received ${response.status}`
+      )
+    }
+
+    core.info(`
+  Successfully dispatched workflow using repository_dispatch method:
+  Repository: ${config.owner}/${config.repo}
+  Branch: Default Branch
+  Distinct ID: ${distinctId}
+  ${
+    config.workflowInputs
+      ? `Client Payload: ${JSON.stringify(config.workflowInputs)}`
+      : ``
+  }`)
+  } catch (error) {
+    if (error instanceof Error) {
+      core.error(
+        `repositoryDispatch: An unexpected error has occurred: ${error.message}`
       )
       error.stack && core.debug(error.stack)
     }

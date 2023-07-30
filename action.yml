@@ -32,7 +32,7 @@ inputs:
   export-run-id:
     description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
     required: false
-    default: "false"
+    default: "true"
 runs:
   using: 'node16'
   main: 'dist/index.js'

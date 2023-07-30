@@ -200,7 +200,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getWorkflowId = exports.dispatchWorkflow = exports.init = void 0;
+exports.getWorkflowId = exports.repositoryDispatch = exports.workflowDispatch = exports.init = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const action_1 = __nccwpck_require__(9139);
@@ -211,7 +211,7 @@ function init(cfg) {
     octokit = github.getOctokit(config.token);
 }
 exports.init = init;
-function dispatchWorkflow(distinctId) {
+function workflowDispatch(distinctId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
@@ -226,7 +226,7 @@ function dispatchWorkflow(distinctId) {
                 throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);
             }
             core.info(`
-Successfully dispatched workflow:
+Successfully dispatched workflow using workflow_dispatch method:
 Repository: ${config.owner}/${config.repo}
 Branch: ${config.ref}
 Workflow ID: ${config.workflow}
@@ -237,14 +237,46 @@ ${config.workflowInputs
         }
         catch (error) {
             if (error instanceof Error) {
-                core.error(`dispatchWorkflow: An unexpected error has occurred: ${error.message}`);
+                core.error(`workflowDispatch: An unexpected error has occurred: ${error.message}`);
                 error.stack && core.debug(error.stack);
             }
             throw error;
         }
     });
 }
-exports.dispatchWorkflow = dispatchWorkflow;
+exports.workflowDispatch = workflowDispatch;
+function repositoryDispatch(distinctId) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+            const response = yield octokit.rest.repos.createDispatchEvent({
+                owner: config.owner,
+                repo: config.repo,
+                event_type: config.eventType,
+                client_payload: Object.assign(Object.assign({}, (config.workflowInputs ? config.workflowInputs : undefined)), { distinct_id: distinctId })
+            });
+            if (response.status !== 204) {
+                throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);
+            }
+            core.info(`
+  Successfully dispatched workflow using repository_dispatch method:
+  Repository: ${config.owner}/${config.repo}
+  Branch: Default Branch
+  Distinct ID: ${distinctId}
+  ${config.workflowInputs
+                ? `Client Payload: ${JSON.stringify(config.workflowInputs)}`
+                : ``}`);
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                core.error(`repositoryDispatch: An unexpected error has occurred: ${error.message}`);
+                error.stack && core.debug(error.stack);
+            }
+            throw error;
+        }
+    });
+}
+exports.repositoryDispatch = repositoryDispatch;
 function getWorkflowId(workflowFilename) {
     var _a;
     return __awaiter(this, void 0, void 0, function* () {
@@ -336,7 +368,12 @@ function run() {
                 workflowId = config.workflow;
             }
             // Dispatch the action
-            yield api.dispatchWorkflow(DISTINCT_ID);
+            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+                yield api.workflowDispatch(DISTINCT_ID);
+            }
+            else {
+                yield api.repositoryDispatch(DISTINCT_ID);
+            }
         }
         catch (error) {
             if (error instanceof Error) {

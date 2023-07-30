@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 import {v4 as uuid} from 'uuid'
-import {getConfig} from './action'
+import {getConfig, DispatchMethod} from './action'
 import * as api from './api'
 
 const DISTINCT_ID = uuid()
@@ -21,7 +21,11 @@ async function run(): Promise<void> {
     }
 
     // Dispatch the action
-    await api.dispatchWorkflow(DISTINCT_ID)
+    if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
+      await api.workflowDispatch(DISTINCT_ID)
+    } else {
+      await api.repositoryDispatch(DISTINCT_ID)
+    }
   } catch (error) {
     if (error instanceof Error) {
       core.error(`Failed to complete: ${error.message}`)

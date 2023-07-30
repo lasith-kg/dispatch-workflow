@@ -23,6 +23,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./
+        id: workflow-dispatch
+        name: "Dispatch Using workflow_dispatch Method"
         with:
           dispatch-method: "workflow_dispatch"
           repo: "${{ github.event.repository.name }}"
@@ -30,3 +32,14 @@ jobs:
           ref: "main"
           workflow: "dispatch.yml"
           token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": "placeholder"}'
+      - uses: ./
+        id: repository-dispatch
+        name: "Dispatch Using repository_dispatch Method"
+        with:
+          dispatch-method: "repository_dispatch"
+          event-type: "repository-dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": "placeholder"}'
