@@ -1,4 +1,4 @@
-name: 'build-test'
+name: 'Build and Test'
 on: # rebuild any PRs and main branch changes
   pull_request:
   push:
@@ -30,7 +30,7 @@ jobs:
           repo: "${{ github.event.repository.name }}"
           owner: "${{ github.repository_owner }}"
           ref: "main"
-          workflow: "dispatch.yml"
+          workflow: "integration-tests.yml"
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
       - uses: ./
