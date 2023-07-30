@@ -7,7 +7,7 @@ on: # rebuild any PRs and main branch changes
       - 'releases/*'
 
 jobs:
-  build: # make sure build/ci work properly
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -15,10 +15,18 @@ jobs:
           npm install
       - run: |
           npm run all
-  test: # make sure the action works on a clean machine without building
+  test:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
     steps:
       - uses: actions/checkout@v3
       - uses: ./
         with:
-          milliseconds: 1000
+          dispatch-method: "workflow_dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          ref: "main"
+          workflow: "dispatch.yml"
+          token: "${{ secrets.GITHUB_TOKEN }}"

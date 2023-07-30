@@ -1,11 +1,38 @@
-name: 'Your name here'
-description: 'Provide a description here'
-author: 'Your name or organization here'
+name: 'Dispatch Workflow'
+description: 'A GitHub action to dispatch a remote GitHub workflow and optionally retrieve its information'
 inputs:
-  milliseconds: # change this
+  dispatch-method:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'The method that will be used for dispatching GitHub workflows: repository_dispatch, workflow_dispatch.'
+  event-type:
+    required: false
+    description: 'If the selected method is repository_dispatch, what event type will be triggered in the remote repository.'
+  repo:
+    description: 'Repository of the action to dispatch.'
+    required: true
+  owner:
+    description: 'Owner of the given repository.'
+    required: true
+  ref:
+    description: 'The git reference for the workflow. The reference can be a branch or tag name.'
+    required: false
+  workflow:
+    description: 'Workflow to return an ID for. Can be the ID or the workflow filename.'
+    required: true
+  workflow-inputs:
+    description: 'A JSON object that contains extra information that will be provided to the workflow'
+    required: false
+  workflow-timeout-seconds:
+    description: 'Time until giving up waiting for the start of the workflow run.'
+    required: false
+    default: "300"
+  token:
+    description: 'GitHub API token for making API requests.'
+    required: true
+  export-run-id:
+    description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
+    required: false
+    default: "false"
 runs:
   using: 'node16'
   main: 'dist/index.js'

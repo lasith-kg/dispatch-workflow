@@ -5,5 +5,13 @@ module.exports = {
   transform: {
     '^.+\\.ts$': 'ts-jest'
   },
-  verbose: true
+  verbose: true,
+  collectCoverage: true,
+  collectCoverageFrom: ['./src/**'],
+  coveragePathIgnorePatterns: ['./src/main.ts'],
+  coverageThreshold: {
+    global: {
+      lines: 90
+    }
+  }
 }

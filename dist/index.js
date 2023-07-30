@@ -1,6 +1,167 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 139:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getConfig = exports.ActionOutputs = exports.DispatchMethod = void 0;
+const core = __importStar(__nccwpck_require__(186));
+const WORKFLOW_TIMEOUT_SECONDS = 5 * 60;
+var DispatchMethod;
+(function (DispatchMethod) {
+    DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
+    DispatchMethod["WorkflowDispatch"] = "workflow_dispatch";
+})(DispatchMethod = exports.DispatchMethod || (exports.DispatchMethod = {}));
+var ActionOutputs;
+(function (ActionOutputs) {
+    ActionOutputs["runId"] = "run-id";
+    ActionOutputs["runUrl"] = "run-url";
+})(ActionOutputs = exports.ActionOutputs || (exports.ActionOutputs = {}));
+function getNumberFromValue(value) {
+    if (value === '') {
+        return undefined;
+    }
+    try {
+        const num = parseInt(value);
+        if (isNaN(num)) {
+            throw new Error('Parsed value is NaN');
+        }
+        return num;
+    }
+    catch (_a) {
+        return undefined;
+    }
+}
+function getWorkflowInputs() {
+    const workflowInputs = core.getInput('workflow-inputs');
+    if (workflowInputs === '') {
+        return {};
+    }
+    try {
+        return JSON.parse(workflowInputs);
+    }
+    catch (error) {
+        core.error('Failed to parse workflow_inputs JSON');
+        if (error instanceof Error) {
+            error.stack && core.debug(error.stack);
+        }
+        throw error;
+    }
+}
+function getDispatchMethod() {
+    const dispatchMethod = core.getInput('dispatch-method', { required: true });
+    try {
+        if (Object.values(DispatchMethod).includes(dispatchMethod)) {
+            return dispatchMethod;
+        }
+        else {
+            throw new Error(`
+Allowed Values: [${Object.values(DispatchMethod).join(', ')}]
+Current Value: ${dispatchMethod}
+`);
+        }
+    }
+    catch (error) {
+        core.error(`Failed to parse dispatch-method`);
+        if (error instanceof Error) {
+            error.stack && core.debug(error.stack);
+        }
+        throw error;
+    }
+}
+function getRef(dispatchMethod) {
+    const ref = core.getInput('ref');
+    try {
+        if (dispatchMethod === DispatchMethod.RepositoryDispatch && !!ref) {
+            throw new Error(`
+Currently the repository_dispatch method only supports dispatching workflows
+from the default branch. Therefore, the 'ref' input is not supported and must be ignored.
+The workflow_dispatch method supports dispatching workflows from non-default branches`);
+        }
+        if (dispatchMethod === DispatchMethod.WorkflowDispatch && !ref) {
+            throw new Error(`
+A valid git reference must be provided to the 'ref' input if using the workflow_dispatch method.
+Can be formatted as 'main' or 'refs/heads/main'`);
+        }
+    }
+    catch (error) {
+        core.error(`Failed to parse ref`);
+        if (error instanceof Error) {
+            error.stack && core.debug(error.stack);
+        }
+        throw error;
+    }
+    return ref || undefined;
+}
+function getEventType(dispatchMethod) {
+    const eventType = core.getInput('event-type');
+    try {
+        if (dispatchMethod === DispatchMethod.RepositoryDispatch && !eventType) {
+            throw new Error(`
+An event-type must be provided to the 'event-type' input if using the repository_dispatch method.`);
+        }
+        if (dispatchMethod === DispatchMethod.WorkflowDispatch && !!eventType) {
+            throw new Error(`
+The 'event-type' input is not supported for the workflow_dispatch method and must be ignored.`);
+        }
+    }
+    catch (error) {
+        core.error(`Failed to parse event-type`);
+        if (error instanceof Error) {
+            error.stack && core.debug(error.stack);
+        }
+        throw error;
+    }
+    return eventType || undefined;
+}
+function getConfig() {
+    const workflow = core.getInput('workflow', { required: true });
+    const dispatchMethod = getDispatchMethod();
+    return {
+        dispatchMethod,
+        eventType: getEventType(dispatchMethod),
+        repo: core.getInput('repo', { required: true }),
+        owner: core.getInput('owner', { required: true }),
+        ref: getRef(dispatchMethod),
+        workflow: getNumberFromValue(workflow) || workflow,
+        workflowInputs: getWorkflowInputs(),
+        workflowTimeoutSeconds: getNumberFromValue(core.getInput('workflow-timeout-seconds')) ||
+            WORKFLOW_TIMEOUT_SECONDS,
+        token: core.getInput('token', { required: true }),
+        exportRunId: core.getBooleanInput('export-run-id')
+    };
+}
+exports.getConfig = getConfig;
+
+
+/***/ }),
+
 /***/ 109:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -40,55 +201,24 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(186));
-const wait_1 = __nccwpck_require__(817);
+const action_1 = __nccwpck_require__(139);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const ms = core.getInput('milliseconds');
-            core.debug(`Waiting ${ms} milliseconds ...`); // debug is only output if you set the secret `ACTIONS_STEP_DEBUG` to true
-            core.debug(new Date().toTimeString());
-            yield (0, wait_1.wait)(parseInt(ms, 10));
-            core.debug(new Date().toTimeString());
-            core.setOutput('time', new Date().toTimeString());
+            const config = (0, action_1.getConfig)();
+            core.info(JSON.stringify(config));
         }
         catch (error) {
-            if (error instanceof Error)
+            if (error instanceof Error) {
+                core.error(`Failed to complete: ${error.message}`);
+                core.warning('Does the token have the correct permissions?');
+                error.stack && core.debug(error.stack);
                 core.setFailed(error.message);
+            }
         }
     });
 }
 run();
-
-
-/***/ }),
-
-/***/ 817:
-/***/ (function(__unused_webpack_module, exports) {
-
-"use strict";
-
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.wait = void 0;
-function wait(milliseconds) {
-    return __awaiter(this, void 0, void 0, function* () {
-        return new Promise(resolve => {
-            if (isNaN(milliseconds)) {
-                throw new Error('milliseconds not a number');
-            }
-            setTimeout(() => resolve('done!'), milliseconds);
-        });
-    });
-}
-exports.wait = wait;
 
 
 /***/ }),
