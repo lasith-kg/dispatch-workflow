@@ -22,7 +22,7 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
       ref: config.ref!,
       inputs: {
         ...config.workflowInputs,
-        distinct_id: distinctId
+        ...(config.exportRunId ? {distinct_id: distinctId} : undefined)
       }
     })
 
@@ -59,7 +59,7 @@ export async function repositoryDispatch(distinctId: string): Promise<void> {
       event_type: config.eventType!,
       client_payload: {
         ...config.workflowInputs,
-        distinct_id: distinctId
+        ...(config.exportRunId ? {distinct_id: distinctId} : undefined)
       }
     })
 

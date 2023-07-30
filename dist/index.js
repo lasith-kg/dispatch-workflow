@@ -243,7 +243,7 @@ function workflowDispatch(distinctId) {
                 repo: config.repo,
                 workflow_id: config.workflow,
                 ref: config.ref,
-                inputs: Object.assign(Object.assign({}, config.workflowInputs), { distinct_id: distinctId })
+                inputs: Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined))
             });
             if (response.status !== 204) {
                 throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);
@@ -274,7 +274,7 @@ function repositoryDispatch(distinctId) {
                 owner: config.owner,
                 repo: config.repo,
                 event_type: config.eventType,
-                client_payload: Object.assign(Object.assign({}, config.workflowInputs), { distinct_id: distinctId })
+                client_payload: Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined))
             });
             if (response.status !== 204) {
                 throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);

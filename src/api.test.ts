@@ -47,7 +47,7 @@ describe('API', () => {
       workflowInputs: JSON.stringify(workflowInputs),
       workflowTimeoutSeconds: '60',
       token: 'token',
-      exportRunId: false
+      exportRunId: true
     }
 
     jest.spyOn(core, 'getInput').mockImplementation((input: string) => {
@@ -93,6 +93,14 @@ describe('API', () => {
   })
 
   describe('workflowDispatch', () => {
+    beforeEach(() => {
+      mockEnvConfig.dispatchMethod = 'workflow_dispatch'
+      mockEnvConfig.workflow = 'workflow.yml'
+      mockEnvConfig.eventType = ''
+      mockEnvConfig.ref = 'feature_branch'
+      init()
+    })
+
     it('should resolve after a successful dispatch', async () => {
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
@@ -124,7 +132,7 @@ describe('API', () => {
 
     it('should dispatch with a distinctId in the inputs', async () => {
       const distinctId = uuid()
-      let dispatchedId = ''
+      let dispatchedId: string | undefined
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         .mockImplementation(async (req?: any) => {
@@ -139,9 +147,38 @@ describe('API', () => {
       await workflowDispatch(distinctId)
       expect(dispatchedId).toStrictEqual(distinctId)
     })
+
+    it('should dispatch without a distinctId in the inputs if export-run-id is set to false', async () => {
+      mockEnvConfig.exportRunId = false
+      init()
+
+      const distinctId = uuid()
+      let dispatchedId: string | undefined
+      jest
+        .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
+        .mockImplementation(async (req?: any) => {
+          dispatchedId = req.inputs.distinct_id
+
+          return {
+            data: undefined,
+            status: 204
+          }
+        })
+
+      await workflowDispatch(distinctId)
+      expect(dispatchedId).toStrictEqual(undefined)
+    })
   })
 
   describe('repositoryDispatch', () => {
+    beforeEach(() => {
+      mockEnvConfig.dispatchMethod = 'repository_dispatch'
+      mockEnvConfig.workflow = ''
+      mockEnvConfig.eventType = 'deploy'
+      mockEnvConfig.ref = ''
+      init()
+    })
+
     it('should resolve after a successful dispatch', async () => {
       jest.spyOn(mockOctokit.rest.repos, 'createDispatchEvent').mockReturnValue(
         Promise.resolve({
@@ -169,7 +206,7 @@ describe('API', () => {
 
     it('should dispatch with a distinctId in the inputs', async () => {
       const distinctId = uuid()
-      let dispatchedId = ''
+      let dispatchedId: string | undefined
       jest
         .spyOn(mockOctokit.rest.repos, 'createDispatchEvent')
         .mockImplementation(async (req?: any) => {
@@ -183,6 +220,27 @@ describe('API', () => {
 
       await repositoryDispatch(distinctId)
       expect(dispatchedId).toStrictEqual(distinctId)
+    })
+
+    it('should dispatch without a distinctId in the inputs if export-run-id is set to false', async () => {
+      mockEnvConfig.exportRunId = false
+      init()
+
+      const distinctId = uuid()
+      let dispatchedId: string | undefined
+      jest
+        .spyOn(mockOctokit.rest.repos, 'createDispatchEvent')
+        .mockImplementation(async (req?: any) => {
+          dispatchedId = req.client_payload.distinct_id
+
+          return {
+            data: undefined,
+            status: 204
+          }
+        })
+
+      await repositoryDispatch(distinctId)
+      expect(dispatchedId).toStrictEqual(undefined)
     })
   })
 
