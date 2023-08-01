@@ -14,7 +14,7 @@ on:
     inputs:
       distinct_id:
         description: "Distinct ID"
-        required: true
+        required: false
       placeholder:
         description: "Placeholder Input"
         required: false

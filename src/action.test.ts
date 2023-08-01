@@ -20,19 +20,6 @@ describe('Action', () => {
     let mockEnvConfig: any
 
     beforeEach(() => {
-      mockEnvConfig = {
-        dispatchMethod: 'workflow_dispatch',
-        eventType: '',
-        repo: 'repository',
-        owner: 'owner',
-        ref: 'feature_branch',
-        workflow: 'workflow.yml',
-        workflowInputs: JSON.stringify(workflowInputs),
-        workflowTimeoutSeconds: '60',
-        token: 'token',
-        exportRunId: false
-      }
-
       jest.spyOn(core, 'getInput').mockImplementation((input: string) => {
         switch (input) {
           case 'dispatch-method':
@@ -74,134 +61,170 @@ describe('Action', () => {
       jest.restoreAllMocks()
     })
 
-    test('Should return a valid config', () => {
-      const config: ActionConfig = getConfig()
+    describe('workflowDispatch', () => {
+      beforeEach(() => {
+        mockEnvConfig = {
+          dispatchMethod: 'workflow_dispatch',
+          eventType: '',
+          repo: 'repository',
+          owner: 'owner',
+          ref: 'feature_branch',
+          workflow: 'workflow.yml',
+          workflowInputs: JSON.stringify(workflowInputs),
+          workflowTimeoutSeconds: '60',
+          token: 'token',
+          exportRunId: false
+        }
+      })
 
-      expect(config.dispatchMethod).toStrictEqual(
-        DispatchMethod.WorkflowDispatch
-      )
-      expect(config.eventType).toStrictEqual(undefined)
-      expect(config.repo).toStrictEqual('repository')
-      expect(config.owner).toStrictEqual('owner')
-      expect(config.ref).toStrictEqual('feature_branch')
-      expect(config.workflow).toStrictEqual('workflow.yml')
-      expect(config.workflowInputs).toStrictEqual(workflowInputs)
-      expect(config.workflowTimeoutSeconds).toStrictEqual(60)
-      expect(config.token).toStrictEqual('token')
-      expect(config.exportRunId).toStrictEqual(false)
+      test('Should return a valid config', () => {
+        const config: ActionConfig = getConfig()
+
+        expect(config.dispatchMethod).toStrictEqual(
+          DispatchMethod.WorkflowDispatch
+        )
+        expect(config.eventType).toBeUndefined()
+        expect(config.repo).toStrictEqual('repository')
+        expect(config.owner).toStrictEqual('owner')
+        expect(config.ref).toStrictEqual('feature_branch')
+        expect(config.workflow).toStrictEqual('workflow.yml')
+        expect(config.workflowInputs).toStrictEqual(workflowInputs)
+        expect(config.workflowTimeoutSeconds).toStrictEqual(60)
+        expect(config.token).toStrictEqual('token')
+        expect(config.exportRunId).toStrictEqual(false)
+      })
+
+      test('Should throw an error if a ref is not provided', () => {
+        mockEnvConfig.ref = ''
+
+        expect(() => getConfig()).toThrowError()
+      })
+
+      test('Should throw an error if an event-type is provided', () => {
+        mockEnvConfig.eventType = 'deploy'
+
+        expect(() => getConfig()).toThrowError()
+      })
+
+      test('Should throw an error if no workflow is provided', () => {
+        mockEnvConfig.workflow = ''
+
+        expect(() => getConfig()).toThrowError()
+      })
+
+      test('Should throw an error if workflowInputs contains a non-string value', () => {
+        mockEnvConfig.workflowInputs = JSON.stringify({
+          hello: false
+        })
+        expect(() => getConfig()).toThrowError()
+
+        mockEnvConfig.workflowInputs = JSON.stringify({
+          hello: 0
+        })
+        expect(() => getConfig()).toThrowError()
+      })
+
+      test('Should have a number for a workflow when given a workflow ID', () => {
+        mockEnvConfig.workflow = '123456'
+        const config: ActionConfig = getConfig()
+
+        expect(config.workflow).toStrictEqual(123456)
+      })
     })
 
-    test('Should return a valid config for supported dispatch methods', () => {
-      let config: ActionConfig
+    describe('repositoryDispatch', () => {
+      beforeEach(() => {
+        mockEnvConfig = {
+          dispatchMethod: 'repository_dispatch',
+          eventType: 'deploy',
+          repo: 'repository',
+          owner: 'owner',
+          ref: '',
+          workflow: '',
+          workflowInputs: JSON.stringify(workflowInputs),
+          workflowTimeoutSeconds: '60',
+          token: 'token',
+          exportRunId: false
+        }
+      })
 
-      mockEnvConfig.dispatchMethod = 'repository_dispatch'
-      mockEnvConfig.workflow = ''
-      mockEnvConfig.eventType = 'deploy'
-      mockEnvConfig.ref = ''
-      config = getConfig()
-      expect(config.dispatchMethod).toStrictEqual(
-        DispatchMethod.RepositoryDispatch
-      )
-      expect(config.ref).toStrictEqual(undefined)
-      expect(config.workflow).toStrictEqual(undefined)
+      test('Should return a valid config', () => {
+        const config: ActionConfig = getConfig()
 
-      mockEnvConfig.dispatchMethod = 'workflow_dispatch'
-      mockEnvConfig.workflow = 'workflow.yml'
-      mockEnvConfig.eventType = ''
-      mockEnvConfig.ref = 'feature_branch'
-      config = getConfig()
-      expect(config.dispatchMethod).toStrictEqual(
-        DispatchMethod.WorkflowDispatch
-      )
-      expect(config.ref).toStrictEqual('feature_branch')
-      expect(config.workflow).toStrictEqual('workflow.yml')
+        expect(config.dispatchMethod).toStrictEqual(
+          DispatchMethod.RepositoryDispatch
+        )
+        expect(config.eventType).toStrictEqual('deploy')
+        expect(config.repo).toStrictEqual('repository')
+        expect(config.owner).toStrictEqual('owner')
+        expect(config.ref).toBeUndefined()
+        expect(config.workflow).toBeUndefined()
+        expect(config.workflowInputs).toStrictEqual(workflowInputs)
+        expect(config.workflowTimeoutSeconds).toStrictEqual(60)
+        expect(config.token).toStrictEqual('token')
+        expect(config.exportRunId).toStrictEqual(false)
+      })
+
+      test('Should throw an error if a ref is provided', () => {
+        mockEnvConfig.ref = 'feature_branch'
+
+        expect(() => getConfig()).toThrowError()
+      })
+
+      test('Should throw an error if no event-type is provided', () => {
+        mockEnvConfig.eventType = ''
+
+        expect(() => getConfig()).toThrowError()
+      })
+
+      test('Should throw an error if a workflow is provided', () => {
+        mockEnvConfig.workflow = 'workflow.yml'
+
+        expect(() => getConfig()).toThrowError()
+      })
     })
 
-    test('Should throw if unsuported dispatch method is provided', () => {
-      mockEnvConfig.dispatchMethod = 'unsupported_dispatch_method'
+    describe('common', () => {
+      beforeEach(() => {
+        mockEnvConfig = {
+          dispatchMethod: 'workflow_dispatch',
+          eventType: '',
+          repo: 'repository',
+          owner: 'owner',
+          ref: 'feature_branch',
+          workflow: 'workflow.yml',
+          workflowInputs: JSON.stringify(workflowInputs),
+          workflowTimeoutSeconds: '60',
+          token: 'token',
+          exportRunId: false
+        }
+      })
 
-      expect(() => getConfig()).toThrowError()
-    })
+      test('Should throw if unsuported dispatch method is provided', () => {
+        mockEnvConfig.dispatchMethod = 'unsupported_dispatch_method'
 
-    test('Should throw an error if a ref is provided alongside the repository_dispatch method', () => {
-      mockEnvConfig.dispatchMethod = 'repository_dispatch'
-      mockEnvConfig.workflow = ''
-      mockEnvConfig.eventType = 'deploy'
-      mockEnvConfig.ref = 'feature_branch'
+        expect(() => getConfig()).toThrowError()
+      })
 
-      expect(() => getConfig()).toThrowError()
-    })
+      test('Should provide a default workflow timeout if none is supplied', () => {
+        mockEnvConfig.workflowTimeoutSeconds = ''
+        const config: ActionConfig = getConfig()
 
-    test('Should throw an error if no event-type is provided alongside the repository_dispatch method', () => {
-      mockEnvConfig.dispatchMethod = 'repository_dispatch'
-      mockEnvConfig.workflow = ''
-      mockEnvConfig.eventType = ''
-      mockEnvConfig.ref = ''
+        expect(config.workflowTimeoutSeconds).toStrictEqual(300)
+      })
 
-      expect(() => getConfig()).toThrowError()
-    })
+      test('Should return an empty client payload if none is supplied', () => {
+        mockEnvConfig.workflowInputs = ''
+        const config: ActionConfig = getConfig()
 
-    test('Should throw an error if a workflow is provided alongside the repository_dispatch method', () => {
-      mockEnvConfig.dispatchMethod = 'repository_dispatch'
-      mockEnvConfig.workflow = 'workflow.yml'
-      mockEnvConfig.eventType = 'deploy'
-      mockEnvConfig.ref = ''
+        expect(config.workflowInputs).toStrictEqual({})
+      })
 
-      expect(() => getConfig()).toThrowError()
-    })
+      test('Should throw if invalid workflow inputs JSON is provided', () => {
+        mockEnvConfig.workflowInputs = '{'
 
-    test('Should throw an error if a ref is not provided alongside the workflow_dispatch method', () => {
-      mockEnvConfig.dispatchMethod = 'workflow_dispatch'
-      mockEnvConfig.workflow = 'workflow.yml'
-      mockEnvConfig.eventType = ''
-      mockEnvConfig.ref = ''
-
-      expect(() => getConfig()).toThrowError()
-    })
-
-    test('Should throw an error if an event-type is provided alongside the workflow_dispatch method', () => {
-      mockEnvConfig.dispatchMethod = 'workflow_dispatch'
-      mockEnvConfig.workflow = 'workflow.yml'
-      mockEnvConfig.eventType = 'deploy'
-      mockEnvConfig.ref = 'feature_branch'
-
-      expect(() => getConfig()).toThrowError()
-    })
-
-    test('Should throw an error if no workflow is provided alongside the workflow_dispatch method', () => {
-      mockEnvConfig.dispatchMethod = 'workflow_dispatch'
-      mockEnvConfig.workflow = ''
-      mockEnvConfig.eventType = ''
-      mockEnvConfig.ref = 'feature_branch'
-
-      expect(() => getConfig()).toThrowError()
-    })
-
-    test('Should have a number for a workflow when given a workflow ID', () => {
-      mockEnvConfig.workflow = '123456'
-      const config: ActionConfig = getConfig()
-
-      expect(config.workflow).toStrictEqual(123456)
-    })
-
-    test('Should provide a default workflow timeout if none is supplied', () => {
-      mockEnvConfig.workflowTimeoutSeconds = ''
-      const config: ActionConfig = getConfig()
-
-      expect(config.workflowTimeoutSeconds).toStrictEqual(300)
-    })
-
-    test('Should return an empty client payload if none is supplied', () => {
-      mockEnvConfig.workflowInputs = ''
-      const config: ActionConfig = getConfig()
-
-      expect(config.workflowInputs).toStrictEqual({})
-    })
-
-    test('Should throw if invalid workflow inputs JSON is provided', () => {
-      mockEnvConfig.workflowInputs = '{'
-
-      expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrowError()
+      })
     })
   })
 })

@@ -71,8 +71,8 @@ export enum DispatchMethod {
 }
 
 export enum ActionOutputs {
-  runId = 'run-id',
-  runUrl = 'run-url'
+  RunId = 'run-id',
+  RunUrl = 'run-url'
 }
 
 function getNumberFromValue(value: string): number | undefined {
@@ -91,14 +91,32 @@ function getNumberFromValue(value: string): number | undefined {
   }
 }
 
-function getWorkflowInputs(): ActionWorkflowInputs {
+function getWorkflowInputs(
+  dispatchMethod: DispatchMethod
+): ActionWorkflowInputs {
   const workflowInputs = core.getInput('workflow-inputs')
   if (workflowInputs === '') {
     return {}
   }
 
   try {
-    return JSON.parse(workflowInputs)
+    const parsedWorkflowInputs = JSON.parse(workflowInputs)
+
+    if (dispatchMethod === DispatchMethod.RepositoryDispatch) {
+      return parsedWorkflowInputs
+    }
+
+    for (const key in parsedWorkflowInputs) {
+      if (typeof parsedWorkflowInputs[key] !== 'string') {
+        throw new Error(`
+For the workflow_dispatch method, the only supported value type is string
+Key: ${key}
+Current Type: ${typeof parsedWorkflowInputs[key]}
+Expected Type: string
+`)
+      }
+    }
+    return parsedWorkflowInputs
   } catch (error) {
     core.error('Failed to parse workflow_inputs JSON')
     if (error instanceof Error) {
@@ -215,7 +233,7 @@ export function getConfig(): ActionConfig {
     owner: core.getInput('owner', {required: true}),
     ref: getRef(dispatchMethod),
     workflow: getWorkflow(dispatchMethod),
-    workflowInputs: getWorkflowInputs(),
+    workflowInputs: getWorkflowInputs(dispatchMethod),
     workflowTimeoutSeconds:
       getNumberFromValue(core.getInput('workflow-timeout-seconds')) ||
       WORKFLOW_TIMEOUT_SECONDS,

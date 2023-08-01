@@ -11,7 +11,7 @@ module.exports = {
   coveragePathIgnorePatterns: ['./src/main.ts'],
   coverageThreshold: {
     global: {
-      lines: 90
+      lines: 95
     }
   }
 }
