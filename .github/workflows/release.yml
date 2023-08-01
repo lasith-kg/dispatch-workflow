@@ -1,0 +1,66 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: choice
+        description: Version number to increment
+        required: true
+        default: minor
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get Releases GitHub Token
+        id: get-releases-token
+        uses: peter-murray/workflow-application-token-action@v2
+        with:
+          application_id: ${{ secrets.APPLICATION_ID }}
+          application_private_key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
+          permissions: "contents:write"
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Need history for changelog generation
+          token: "${{ steps.get-releases-token.outputs.token }}"
+      - id: config-git
+        name: Config Git
+        shell: bash
+        run: |
+          git config user.name "automated-release-manager[bot]"
+          git config user.email "automated-release-manager[bot]@users.noreply.github.com"
+      - name: Set Node.js lts
+        uses: actions/setup-node@v3
+        with:
+          node-version: lts/*
+      - name: Install Dependencies
+        run: npm ci
+      - name: test
+        id: Test
+        run: npm run test
+      - name: Lint
+        run: npm run lint
+      - name: Format Check
+        run: npm run format-check
+      - name: Build
+        run: npm run build
+        # We need to make sure the checked-in `index.js` actually matches what we expect it to be.
+      - name: Compare the Expected and Actual dist/ Directories
+        run: |
+          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
+            echo "Detected uncommitted changes after build.  See status below:"
+            git diff
+            exit 1
+          fi
+        id: diff
+      - name: Perform Release
+        run: |
+          npm run release -- \
+            ${{ github.event.inputs.version }} \
+            --ci
+        env:
+          GITHUB_TOKEN: "${{ steps.get-releases-token.outputs.token }}"
