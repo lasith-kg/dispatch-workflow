@@ -2,7 +2,16 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {v4 as uuid} from 'uuid'
 import {afterEach, beforeEach, describe, expect, it, jest} from '@jest/globals'
-import {workflowDispatch, getWorkflowId, init, repositoryDispatch} from './api'
+import {
+  workflowDispatch,
+  getWorkflowId,
+  init,
+  repositoryDispatch,
+  getDefaultBranch,
+  retryOrDie,
+  getWorkflowRuns
+} from './api'
+import {ActionConfig, DispatchMethod} from './action'
 
 jest.mock('@actions/core')
 
@@ -19,9 +28,18 @@ const mockOctokit = {
       },
       listRepoWorkflows: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
+      },
+      listWorkflowRuns: async (_req?: any): Promise<MockResponse> => {
+        throw new Error('Should be mocked')
+      },
+      listWorkflowRunsForRepo: async (_req?: any): Promise<MockResponse> => {
+        throw new Error('Should be mocked')
       }
     },
     repos: {
+      get: async (_req?: any): Promise<MockResponse> => {
+        throw new Error('Should be mocked')
+      },
       createDispatchEvent: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
       }
@@ -34,46 +52,21 @@ describe('API', () => {
     placeholder: 'placeholder'
   }
 
-  let mockEnvConfig: any
+  let mockEnvConfig: ActionConfig
 
   beforeEach(() => {
     mockEnvConfig = {
-      dispatchMethod: 'workflow_dispatch',
+      dispatchMethod: DispatchMethod.WorkflowDispatch,
       eventType: '',
       repo: 'repository',
       owner: 'owner',
       ref: 'feature_branch',
       workflow: 'workflow.yml',
-      workflowInputs: JSON.stringify(workflowInputs),
-      workflowTimeoutSeconds: '60',
+      workflowInputs,
+      workflowTimeoutSeconds: 60,
       token: 'token',
       exportRunId: true
     }
-
-    jest.spyOn(core, 'getInput').mockImplementation((input: string) => {
-      switch (input) {
-        case 'dispatch-method':
-          return mockEnvConfig.dispatchMethod
-        case 'event-type':
-          return mockEnvConfig.eventType
-        case 'repo':
-          return mockEnvConfig.repo
-        case 'owner':
-          return mockEnvConfig.owner
-        case 'ref':
-          return mockEnvConfig.ref
-        case 'workflow':
-          return mockEnvConfig.workflow
-        case 'workflow-inputs':
-          return mockEnvConfig.workflowInputs
-        case 'workflow-timeout-seconds':
-          return mockEnvConfig.workflowTimeoutSeconds
-        case 'token':
-          return mockEnvConfig.token
-        default:
-          throw new Error('invalid input requested')
-      }
-    })
 
     jest.spyOn(core, 'getBooleanInput').mockImplementation((input: string) => {
       switch (input) {
@@ -85,7 +78,7 @@ describe('API', () => {
     })
 
     jest.spyOn(github, 'getOctokit').mockReturnValue(mockOctokit as any)
-    init()
+    init(mockEnvConfig)
   })
 
   afterEach(() => {
@@ -94,11 +87,11 @@ describe('API', () => {
 
   describe('workflowDispatch', () => {
     beforeEach(() => {
-      mockEnvConfig.dispatchMethod = 'workflow_dispatch'
+      mockEnvConfig.dispatchMethod = DispatchMethod.WorkflowDispatch
       mockEnvConfig.workflow = 'workflow.yml'
       mockEnvConfig.eventType = ''
       mockEnvConfig.ref = 'feature_branch'
-      init()
+      init(mockEnvConfig)
     })
 
     it('should resolve after a successful dispatch', async () => {
@@ -106,6 +99,8 @@ describe('API', () => {
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         .mockReturnValue(
           Promise.resolve({
+            headers: null,
+            url: '',
             data: undefined,
             status: 204
           })
@@ -150,7 +145,7 @@ describe('API', () => {
 
     it('should dispatch without a distinctId in the inputs if export-run-id is set to false', async () => {
       mockEnvConfig.exportRunId = false
-      init()
+      init(mockEnvConfig)
 
       const distinctId = uuid()
       let dispatchedId: string | undefined
@@ -166,17 +161,35 @@ describe('API', () => {
         })
 
       await workflowDispatch(distinctId)
-      expect(dispatchedId).toStrictEqual(undefined)
+      expect(dispatchedId).toBeUndefined()
+    })
+
+    it('should throw if workflowDispatch is invoked without workflow configured', async () => {
+      mockEnvConfig.workflow = ''
+      init(mockEnvConfig)
+
+      await expect(workflowDispatch('')).rejects.toThrow(
+        `An input to 'workflow' was not provided`
+      )
+    })
+
+    it('should throw if workflowDispatch is invoked without ref configured', async () => {
+      mockEnvConfig.ref = ''
+      init(mockEnvConfig)
+
+      await expect(workflowDispatch('')).rejects.toThrow(
+        `An input to 'ref' was not provided`
+      )
     })
   })
 
   describe('repositoryDispatch', () => {
     beforeEach(() => {
-      mockEnvConfig.dispatchMethod = 'repository_dispatch'
+      mockEnvConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
       mockEnvConfig.workflow = ''
       mockEnvConfig.eventType = 'deploy'
       mockEnvConfig.ref = ''
-      init()
+      init(mockEnvConfig)
     })
 
     it('should resolve after a successful dispatch', async () => {
@@ -224,7 +237,7 @@ describe('API', () => {
 
     it('should dispatch without a distinctId in the inputs if export-run-id is set to false', async () => {
       mockEnvConfig.exportRunId = false
-      init()
+      init(mockEnvConfig)
 
       const distinctId = uuid()
       let dispatchedId: string | undefined
@@ -240,7 +253,16 @@ describe('API', () => {
         })
 
       await repositoryDispatch(distinctId)
-      expect(dispatchedId).toStrictEqual(undefined)
+      expect(dispatchedId).toBeUndefined()
+    })
+
+    it('should throw if repositoryDispatch is invoked without an event-type configured', async () => {
+      mockEnvConfig.eventType = ''
+      init(mockEnvConfig)
+
+      await expect(repositoryDispatch('')).rejects.toThrow(
+        `An input to 'event-type' was not provided`
+      )
     })
   })
 
@@ -304,6 +326,209 @@ describe('API', () => {
       await expect(getWorkflowId(workflowName)).rejects.toThrow(
         `Unable to find ID for Workflow: ${workflowName}`
       )
+    })
+  })
+
+  describe('getDefaultBranch', () => {
+    it('should return the default branch for a given repository', async () => {
+      jest.spyOn(mockOctokit.rest.repos, 'get').mockReturnValue(
+        Promise.resolve({
+          data: {
+            default_branch: 'main'
+          },
+          status: 200
+        })
+      )
+
+      expect(await getDefaultBranch()).toStrictEqual('main')
+    })
+
+    it('should throw if a non-200 status is returned', async () => {
+      const errorStatus = 404
+      jest.spyOn(mockOctokit.rest.repos, 'get').mockReturnValue(
+        Promise.resolve({
+          data: undefined,
+          status: errorStatus
+        })
+      )
+
+      await expect(getDefaultBranch()).rejects.toThrow(
+        `Failed to get repository information, expected 200 but received ${errorStatus}`
+      )
+    })
+  })
+
+  describe('getWorkflowRuns', () => {
+    describe('workflowDispatch', () => {
+      beforeEach(() => {
+        mockEnvConfig.dispatchMethod = DispatchMethod.WorkflowDispatch
+        mockEnvConfig.workflow = 'workflow.yml'
+        mockEnvConfig.eventType = ''
+        mockEnvConfig.ref = 'refs/heads/feature_branch'
+        init(mockEnvConfig)
+      })
+
+      it('should return the workflow runs for a valid configuration', async () => {
+        const mockData = {
+          workflow_runs: [
+            {
+              id: 0,
+              name: 'Apple',
+              html_url: 'http://github.com/0'
+            },
+            {
+              id: 1,
+              html_url: 'http://github.com/1'
+            }
+          ]
+        }
+
+        jest
+          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
+          .mockReturnValue(
+            Promise.resolve({
+              data: mockData,
+              status: 200
+            })
+          )
+
+        const workflowRuns = await getWorkflowRuns()
+        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
+      })
+
+      it('should return the workflow runs for a tags ref', async () => {
+        mockEnvConfig.ref = 'refs/tags/v1.0.0'
+        init(mockEnvConfig)
+
+        const mockData = {
+          workflow_runs: [
+            {
+              id: 0,
+              name: 'Apple',
+              html_url: 'http://github.com/0'
+            },
+            {
+              id: 1,
+              html_url: 'http://github.com/1'
+            }
+          ]
+        }
+
+        jest
+          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
+          .mockReturnValue(
+            Promise.resolve({
+              data: mockData,
+              status: 200
+            })
+          )
+
+        const workflowRuns = await getWorkflowRuns()
+        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
+      })
+
+      it('should throw if getWorkflowRuns is invoked without a workflow configured', async () => {
+        mockEnvConfig.workflow = ''
+        init(mockEnvConfig)
+
+        await expect(getWorkflowRuns()).rejects.toThrow(
+          `An input to 'workflow' was not provided`
+        )
+      })
+    })
+
+    describe('repositoryDispatch', () => {
+      beforeEach(() => {
+        mockEnvConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
+        mockEnvConfig.workflow = ''
+        mockEnvConfig.eventType = 'deploy'
+        mockEnvConfig.ref = ''
+        init(mockEnvConfig)
+
+        jest.spyOn(mockOctokit.rest.repos, 'get').mockReturnValue(
+          Promise.resolve({
+            data: {
+              default_branch: 'main'
+            },
+            status: 200
+          })
+        )
+      })
+
+      it('should return the workflow runs for a valid configuration', async () => {
+        const mockData = {
+          workflow_runs: [
+            {
+              id: 0,
+              name: 'Apple',
+              html_url: 'http://github.com/0'
+            },
+            {
+              id: 1,
+              html_url: 'http://github.com/1'
+            }
+          ]
+        }
+
+        jest
+          .spyOn(mockOctokit.rest.actions, 'listWorkflowRunsForRepo')
+          .mockReturnValue(
+            Promise.resolve({
+              data: mockData,
+              status: 200
+            })
+          )
+
+        const workflowRuns = await getWorkflowRuns()
+        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
+      })
+    })
+
+    describe('common', () => {
+      it('should throw if a non-200 status is returned', async () => {
+        const errorStatus = 404
+
+        jest
+          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
+          .mockReturnValue(
+            Promise.resolve({
+              data: undefined,
+              status: errorStatus
+            })
+          )
+
+        await expect(getWorkflowRuns()).rejects.toThrowError(
+          `Failed to get workflow runs, expected 200 but received ${errorStatus}`
+        )
+      })
+    })
+  })
+
+  describe('retryOrDie', () => {
+    // A generic wait function that returns an array after an arbituary amount of time
+    const wait = async (delay: number, value: string[]): Promise<string[]> => {
+      return new Promise(resolve => setTimeout(resolve, delay, value))
+    }
+
+    /**
+     * Number.MIN_VALUE is the value closest to 0. Any positive number below
+     * Number.MIN_VALUE gets converted to 0 by the Javascript runtime
+     * This value is useful so that we can force the retryOrDie loop with a minimal timeout
+     */
+
+    it('should return a valid response before the timeout', async () => {
+      const data = ['placeholder']
+      const response = await retryOrDie<string>(
+        async () => wait(0, data),
+        Number.MIN_VALUE
+      )
+      expect(response).toStrictEqual(data)
+    })
+
+    it('should throw if timeout is exceeded', async () => {
+      await expect(
+        retryOrDie<string>(async () => wait(0, []), Number.MIN_VALUE)
+      ).rejects.toThrowError()
     })
   })
 })

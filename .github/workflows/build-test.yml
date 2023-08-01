@@ -25,8 +25,8 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: ./
-        id: workflow-dispatch
-        name: "Dispatch Using workflow_dispatch Method"
+        id: just-workflow-dispatch
+        name: "Just Dispatch Workflow using workflow_dispatch Method"
         with:
           dispatch-method: "workflow_dispatch"
           repo: "${{ github.event.repository.name }}"
@@ -36,8 +36,70 @@ jobs:
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
       - uses: ./
-        id: repository-dispatch
-        name: "Dispatch Using repository_dispatch Method"
+        id: fail-ref-workflow-dispatch
+        name: "Dispatch Workflow using workflow_dispatch Method, to a Non-existent Branch"
+        continue-on-error: true
+        with:
+          dispatch-method: "workflow_dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          ref: "non-existent-branch/${{ github.run_id }}"
+          workflow: "integration-tests.yml"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": "placeholder"}'
+      - uses: ./
+        id: fail-file-workflow-dispatch
+        name: "Dispatch Workflow using workflow_dispatch Method, to a Non-existent Workflow File"
+        continue-on-error: true
+        with:
+          dispatch-method: "workflow_dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          ref: "main"
+          workflow: "${{ github.run_id }}.yml"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": "placeholder"}'
+      - id: verify-fail-workflow-dispatch
+        name: "Verify Action Outputs for worflow-dispatch"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ "${{ steps.fail-ref-workflow-dispatch.outcome }}" != "failure" ]]; then
+            >&2 echo "🔴 fail-ref-workflow-dispatch step was expected to fail"; exit 1
+          fi
+
+          if [[ "${{ steps.fail-file-workflow-dispatch.outcome }}" != "failure" ]]; then
+            >&2 echo "🔴 fail-file-workflow-dispatch step was expected to fail"; exit 1
+          fi
+      - uses: ./
+        id: wait-workflow-dispatch
+        name: "Dispatch Using workflow_dispatch Method And Wait For Run-ID"
+        with:
+          dispatch-method: "workflow_dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          ref: "refs/heads/main"
+          workflow: 64701969
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": "placeholder"}'
+          export-run-id: true
+      - id: verify-workflow-dispatch
+        name: "Verify Action Outputs for worflow-dispatch"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${{ steps.wait-workflow-dispatch.outputs.run-id }}" ]]; then
+            >&2 echo "🔴 wait-workflow-dispatch step should output 'run-id'"; exit 1
+          fi
+
+          if [[ -z "${{ steps.wait-workflow-dispatch.outputs.run-url }}" ]]; then
+            >&2 echo "🔴 wait-workflow-dispatch step should output 'run-url'"; exit 1
+          fi
+      - uses: ./
+        id: wait-repository-dispatch
+        name: "Dispatch Using repository_dispatch Method And Wait For Run-ID"
         with:
           dispatch-method: "repository_dispatch"
           event-type: "repository-dispatch"
@@ -45,3 +107,17 @@ jobs:
           owner: "${{ github.repository_owner }}"
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
+          export-run-id: true
+      - id: verify-repository-dispatch
+        name: "Verify Action Outputs for repository-dispatch"
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${{ steps.wait-repository-dispatch.outputs.run-id }}" ]]; then
+            >&2 echo "🔴 wait-repository-dispatch step should output 'run-id'"; exit 1
+          fi
+
+          if [[ -z "${{ steps.wait-repository-dispatch.outputs.run-url }}" ]]; then
+            >&2 echo "🔴 wait-repository-dispatch step should output 'run-url'"; exit 1
+          fi

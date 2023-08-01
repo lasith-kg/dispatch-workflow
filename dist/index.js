@@ -40,8 +40,8 @@ var DispatchMethod;
 })(DispatchMethod = exports.DispatchMethod || (exports.DispatchMethod = {}));
 var ActionOutputs;
 (function (ActionOutputs) {
-    ActionOutputs["runId"] = "run-id";
-    ActionOutputs["runUrl"] = "run-url";
+    ActionOutputs["RunId"] = "run-id";
+    ActionOutputs["RunUrl"] = "run-url";
 })(ActionOutputs = exports.ActionOutputs || (exports.ActionOutputs = {}));
 function getNumberFromValue(value) {
     if (value === '') {
@@ -58,13 +58,27 @@ function getNumberFromValue(value) {
         return undefined;
     }
 }
-function getWorkflowInputs() {
+function getWorkflowInputs(dispatchMethod) {
     const workflowInputs = core.getInput('workflow-inputs');
     if (workflowInputs === '') {
         return {};
     }
     try {
-        return JSON.parse(workflowInputs);
+        const parsedWorkflowInputs = JSON.parse(workflowInputs);
+        if (dispatchMethod === DispatchMethod.RepositoryDispatch) {
+            return parsedWorkflowInputs;
+        }
+        for (const key in parsedWorkflowInputs) {
+            if (typeof parsedWorkflowInputs[key] !== 'string') {
+                throw new Error(`
+For the workflow_dispatch method, the only supported value type is string
+Key: ${key}
+Current Type: ${typeof parsedWorkflowInputs[key]}
+Expected Type: string
+`);
+            }
+        }
+        return parsedWorkflowInputs;
     }
     catch (error) {
         core.error('Failed to parse workflow_inputs JSON');
@@ -173,7 +187,7 @@ function getConfig() {
         owner: core.getInput('owner', { required: true }),
         ref: getRef(dispatchMethod),
         workflow: getWorkflow(dispatchMethod),
-        workflowInputs: getWorkflowInputs(),
+        workflowInputs: getWorkflowInputs(dispatchMethod),
         workflowTimeoutSeconds: getNumberFromValue(core.getInput('workflow-timeout-seconds')) ||
             WORKFLOW_TIMEOUT_SECONDS,
         token: core.getInput('token', { required: true }),
@@ -223,10 +237,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getWorkflowId = exports.repositoryDispatch = exports.workflowDispatch = exports.init = void 0;
+exports.retryOrDie = exports.getDefaultBranch = exports.getWorkflowRuns = exports.getWorkflowId = exports.repositoryDispatch = exports.workflowDispatch = exports.init = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const action_1 = __nccwpck_require__(9139);
+const utils_1 = __nccwpck_require__(918);
 let config;
 let octokit;
 function init(cfg) {
@@ -237,13 +252,20 @@ exports.init = init;
 function workflowDispatch(distinctId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const inputs = Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined));
+            if (!config.workflow) {
+                throw new Error(`An input to 'workflow' was not provided`);
+            }
+            if (!config.ref) {
+                throw new Error(`An input to 'ref' was not provided`);
+            }
             // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
             const response = yield octokit.rest.actions.createWorkflowDispatch({
                 owner: config.owner,
                 repo: config.repo,
                 workflow_id: config.workflow,
                 ref: config.ref,
-                inputs: Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined))
+                inputs
             });
             if (response.status !== 204) {
                 throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);
@@ -254,7 +276,7 @@ Repository: ${config.owner}/${config.repo}
 Branch: ${config.ref}
 Workflow ID: ${config.workflow}
 Distinct ID: ${distinctId}
-Workflow Inputs: ${JSON.stringify(config.workflowInputs)}`);
+Workflow Inputs: ${JSON.stringify(inputs)}`);
         }
         catch (error) {
             if (error instanceof Error) {
@@ -269,12 +291,16 @@ exports.workflowDispatch = workflowDispatch;
 function repositoryDispatch(distinctId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const clientPayload = Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined));
+            if (!config.eventType) {
+                throw new Error(`An input to 'event-type' was not provided`);
+            }
             // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
             const response = yield octokit.rest.repos.createDispatchEvent({
                 owner: config.owner,
                 repo: config.repo,
                 event_type: config.eventType,
-                client_payload: Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined))
+                client_payload: clientPayload
             });
             if (response.status !== 204) {
                 throw new Error(`Failed to dispatch action, expected 204 but received ${response.status}`);
@@ -282,9 +308,9 @@ function repositoryDispatch(distinctId) {
             core.info(`
 Successfully dispatched workflow using repository_dispatch method:
 Repository: ${config.owner}/${config.repo}
-Branch: Default Branch
+Event Type: ${config.eventType}
 Distinct ID: ${distinctId}
-Client Payload: ${JSON.stringify(config.workflowInputs)}`);
+Client Payload: ${JSON.stringify(clientPayload)}`);
         }
         catch (error) {
             if (error instanceof Error) {
@@ -324,6 +350,111 @@ function getWorkflowId(workflowFilename) {
     });
 }
 exports.getWorkflowId = getWorkflowId;
+function getWorkflowRuns() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            let status;
+            let branchName;
+            let response;
+            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+                branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
+                if (!config.workflow) {
+                    throw new Error(`An input to 'workflow' was not provided`);
+                }
+                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
+                response = yield octokit.rest.actions.listWorkflowRuns(Object.assign({ owner: config.owner, repo: config.repo, workflow_id: config.workflow }, (branchName
+                    ? {
+                        branch: branchName,
+                        per_page: 5
+                    }
+                    : {
+                        per_page: 10
+                    })));
+                status = response.status;
+            }
+            else {
+                // repository_dipsatch can only be triggered from the default branch
+                const branchName = yield getDefaultBranch();
+                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+                response = yield octokit.rest.actions.listWorkflowRunsForRepo({
+                    owner: config.owner,
+                    repo: config.repo,
+                    branch: branchName,
+                    event: action_1.DispatchMethod.RepositoryDispatch,
+                    per_page: 5
+                });
+                status = response.status;
+            }
+            if (status !== 200) {
+                throw new Error(`Failed to get workflow runs, expected 200 but received ${status}`);
+            }
+            const workflowRuns = response.data.workflow_runs.map(workflowRun => ({
+                id: workflowRun.id,
+                name: workflowRun.name || '',
+                htmlUrl: workflowRun.html_url
+            }));
+            core.debug(`
+Fetched Workflow Runs
+Repository: ${config.owner}/${config.repo}
+Branch: ${branchName || 'undefined'}
+Runs Fetched: [${workflowRuns.map(workflowRun => workflowRun.id)}]`);
+            return workflowRuns;
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                core.error(`getWorkflowRuns: An unexpected error has occurred: ${error.message}`);
+                error.stack && core.debug(error.stack);
+            }
+            throw error;
+        }
+    });
+}
+exports.getWorkflowRuns = getWorkflowRuns;
+function getDefaultBranch() {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const response = yield octokit.rest.repos.get({
+                owner: config.owner,
+                repo: config.repo
+            });
+            if (response.status !== 200) {
+                throw new Error(`Failed to get repository information, expected 200 but received ${response.status}`);
+            }
+            core.debug(`
+Fetched Repository Information
+Repository: ${config.owner}/${config.repo}
+Default Branch: ${response.data.default_branch}`);
+            return response.data.default_branch;
+        }
+        catch (error) {
+            if (error instanceof Error) {
+                core.error(`getDefaultBranch: An unexpected error has occurred: ${error.message}`);
+                error.stack && core.debug(error.stack);
+            }
+            throw error;
+        }
+    });
+}
+exports.getDefaultBranch = getDefaultBranch;
+/**
+ * Attempt to get a non-empty array from the API.
+ */
+function retryOrDie(callback, timeoutMs) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const startTime = Date.now();
+        let elapsedTime = 0;
+        while (elapsedTime < timeoutMs) {
+            elapsedTime = Date.now() - startTime;
+            const response = yield callback();
+            if (response.length > 0) {
+                return response;
+            }
+            yield new Promise(resolve => setTimeout(resolve, 1000));
+        }
+        throw new Error('Timed out while attempting to fetch data');
+    });
+}
+exports.retryOrDie = retryOrDie;
 
 
 /***/ }),
@@ -371,10 +502,13 @@ const uuid_1 = __nccwpck_require__(5840);
 const action_1 = __nccwpck_require__(9139);
 const api = __importStar(__nccwpck_require__(8947));
 const DISTINCT_ID = (0, uuid_1.v4)();
+const WORKFLOW_FETCH_TIMEOUT_MS = 60 * 1000;
+const WORKFLOW_JOB_STEPS_RETRY_MS = 5000;
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const config = (0, action_1.getConfig)();
+            const startTime = Date.now();
             api.init(config);
             // Get the workflow ID if give a string
             if (typeof config.workflow === 'string') {
@@ -390,6 +524,36 @@ function run() {
             else {
                 yield api.repositoryDispatch(DISTINCT_ID);
             }
+            // Exit Early Early if export-run-id is disabled
+            if (!config.exportRunId) {
+                core.info('Workflow dispatched! Skipping the retrieval of the run-id');
+                return;
+            }
+            const timeoutMs = config.workflowTimeoutSeconds * 1000;
+            let attemptNo = 0;
+            let elapsedTime = Date.now() - startTime;
+            core.info("Attempt to extract run ID from 'run-name'...");
+            while (elapsedTime < timeoutMs) {
+                attemptNo++;
+                elapsedTime = Date.now() - startTime;
+                core.debug(`Attempting to fetch Run IDs for workflow with distinct id [${DISTINCT_ID}]`);
+                // Get all runs for a given workflow ID
+                const workflowRuns = yield api.retryOrDie(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowRuns(); }), WORKFLOW_FETCH_TIMEOUT_MS > timeoutMs
+                    ? timeoutMs
+                    : WORKFLOW_FETCH_TIMEOUT_MS);
+                const dispatchedWorkflowRun = workflowRuns.find(workflowRun => new RegExp(DISTINCT_ID).test(workflowRun.name));
+                if (dispatchedWorkflowRun) {
+                    core.info('Successfully identified remote Run:\n' +
+                        `  Run ID: ${dispatchedWorkflowRun.id}\n` +
+                        `  URL: ${dispatchedWorkflowRun.htmlUrl}`);
+                    core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
+                    core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
+                    return;
+                }
+                core.info(`Exhausted searching IDs in known runs, attempt ${attemptNo}...`);
+                yield new Promise(resolve => setTimeout(resolve, WORKFLOW_JOB_STEPS_RETRY_MS));
+            }
+            throw new Error('Timeout exceeded while attempting to get Run ID');
         }
         catch (error) {
             if (error instanceof Error) {
@@ -402,6 +566,75 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 918:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.getBranchNameFromRef = void 0;
+const core = __importStar(__nccwpck_require__(2186));
+function getBranchNameFromHeadRef(ref) {
+    const refItems = ref.split(/\/?refs\/heads\//);
+    if (refItems.length > 1 && refItems[1].length > 0) {
+        return refItems[1];
+    }
+}
+function isTagRef(ref) {
+    return new RegExp(/\/?refs\/tags\//).test(ref);
+}
+function getBranchNameFromRef(ref) {
+    if (!ref) {
+        return undefined;
+    }
+    if (isTagRef(ref)) {
+        core.debug(`Unable to filter branch, unsupported ref: ${ref}`);
+        return undefined;
+    }
+    /**
+     * Worst case scenario: return original ref if getBranchNameFromHeadRef
+     * cannot extract a valid branch name. This is to allow valid ref
+     * like 'main' to be supported by this function. The implication of this
+     * is that malformed ref like 'refs/heads/' are pass through this function
+     * undetected.
+     *
+     * We could introduce an external third party call to validate
+     * the authenticity of the branch name, but this requires additional permissions
+     * for workflow_dispatch: [actions:write -> contents:read + actions:write]
+     *
+     * This would be a neglibile issue for repository_dispatch as it already has
+     * [contents:write] permissions
+     */
+    return getBranchNameFromHeadRef(ref) || ref;
+}
+exports.getBranchNameFromRef = getBranchNameFromRef;
 
 
 /***/ }),
