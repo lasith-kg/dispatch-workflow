@@ -1,0 +1,56 @@
+name: Release
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        type: choice
+        description: Version number to increment
+        required: true
+        default: minor
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Need history for changelog generation
+      - name: Set Node.js lts
+        uses: actions/setup-node@v3
+        with:
+          node-version: lts/*
+      - name: Install Dependencies
+        run: npm ci
+      - name: test
+        id: Test
+        run: npm run test
+      - name: Lint
+        run: npm run lint
+      - name: Format Check
+        run: npm run format-check
+      - name: Check Types
+        run: npm run build
+        # We need to make sure the checked-in `index.js` actually matches what we expect it to be.
+      - name: Compare the Expected and Actual dist/ Directories
+        run: |
+          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
+            echo "Detected uncommitted changes after build.  See status below:"
+            git diff
+            exit 1
+          fi
+        id: diff
+      - name: Config Git
+        run: |
+          git config --global user.name "${{ github.actor }}"
+          git config --global user.email "${{ github.run_id }}+${{ github.actor }}@users.noreply.github.com"
+      - name: Perform Release
+        run: |
+          npm run release -- \
+            ${{ github.event.inputs.version }} \
+            --ci
