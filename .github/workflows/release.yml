@@ -62,5 +62,6 @@ jobs:
         run: |
           tag="$(git describe --tags `git rev-list --tags --max-count=1`)"
           compact_tag=$(grep -oE 'v[0-9]+' <<< "${tag}")
-          git tag "${compact_tag}"
-          git push origin "${compact_tag}"
+          # Force Push (if it already exists)
+          git tag -f "${compact_tag}"
+          git push -f origin "${compact_tag}"
