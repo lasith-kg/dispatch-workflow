@@ -16,30 +16,23 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      # - name: Get Releases GitHub Token
-      #   id: get-releases-token
-      #   uses: peter-murray/workflow-application-token-action@v2
-      #   with:
-      #     application_id: ${{ secrets.APPLICATION_ID }}
-      #     application_private_key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
-      #     permissions: "contents:write"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Need history for changelog generation
-          token: "${{ secrets.RELEASE_GITHUB_TOKEN }}"
+          token: "${{ secrets.ACTIONS_BOT_TOKEN }}"
       - id: config-git
         name: Config Git
         shell: bash
         run: |
-          git config user.name "dispatach-workflow-releases[bot]"
-          git config user.email "dispatach-workflow-releases[bot]@users.noreply.github.com"
+          git config user.name "releases[bot]"
+          git config user.email "releases[bot]@users.noreply.github.com"
       - name: Set Node.js lts
         uses: actions/setup-node@v3
         with:
           node-version: lts/*
       - name: Install Dependencies
         run: npm ci
-      - name: test
+      - name: Test
         id: Test
         run: npm run test
       - name: Lint
@@ -63,4 +56,11 @@ jobs:
             ${{ github.event.inputs.version }} \
             --ci
         env:
-          GITHUB_TOKEN: "${{ secrets.RELEASE_GITHUB_TOKEN }}"
+          GITHUB_TOKEN: "${{ secrets.ACTIONS_BOT_TOKEN }}"
+      - name: Push Compact Tag
+        id: update-compact-tag
+        run: |
+          tag="$(git describe --tags `git rev-list --tags --max-count=1`)"
+          compact_tag=$(grep -oE 'v[0-9]+' <<< "${tag}")
+          git tag "${compact_tag}"
+          git push origin "${compact_tag}"
