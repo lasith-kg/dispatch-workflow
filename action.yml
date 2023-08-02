@@ -22,17 +22,19 @@ inputs:
   workflow-inputs:
     description: 'A JSON object that contains extra information that will be provided to the workflow'
     required: false
-  workflow-timeout-seconds:
-    description: 'Time until giving up waiting for the start of the workflow run.'
-    required: false
-    default: "300"
   token:
     description: 'GitHub API token for making API requests.'
     required: true
-  export-run-id:
-    description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
+  discover:
+    description: >
+      A flag to enable the discovery of the Run ID from the dispatched workflow. 
+      The remote workflow must be modified appropriately to expose a `distinct_id` in the `run-name`
     required: false
     default: "false"
+  discover-timeout-seconds:
+    description: 'Time until giving up on the discovery of the dispatched workflow and corresponding Run ID.'
+    required: false
+    default: "300"
 runs:
   using: 'node16'
   main: 'dist/index.js'

@@ -83,7 +83,7 @@ jobs:
           workflow: 64701969
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
-          export-run-id: true
+          discover: true
       - id: verify-workflow-dispatch
         name: "Verify Action Outputs for worflow-dispatch"
         shell: bash
@@ -107,7 +107,7 @@ jobs:
           owner: "${{ github.repository_owner }}"
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
-          export-run-id: true
+          discover: true
       - id: verify-repository-dispatch
         name: "Verify Action Outputs for repository-dispatch"
         shell: bash

@@ -188,10 +188,10 @@ function getConfig() {
         ref: getRef(dispatchMethod),
         workflow: getWorkflow(dispatchMethod),
         workflowInputs: getWorkflowInputs(dispatchMethod),
-        workflowTimeoutSeconds: getNumberFromValue(core.getInput('workflow-timeout-seconds')) ||
+        discoverTimeoutSeconds: getNumberFromValue(core.getInput('discover-timeout-seconds')) ||
             WORKFLOW_TIMEOUT_SECONDS,
         token: core.getInput('token', { required: true }),
-        exportRunId: core.getBooleanInput('export-run-id')
+        discover: core.getBooleanInput('discover')
     };
 }
 exports.getConfig = getConfig;
@@ -252,7 +252,7 @@ exports.init = init;
 function workflowDispatch(distinctId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const inputs = Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined));
+            const inputs = Object.assign(Object.assign({}, config.workflowInputs), (config.discover ? { distinct_id: distinctId } : undefined));
             if (!config.workflow) {
                 throw new Error(`An input to 'workflow' was not provided`);
             }
@@ -291,7 +291,7 @@ exports.workflowDispatch = workflowDispatch;
 function repositoryDispatch(distinctId) {
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const clientPayload = Object.assign(Object.assign({}, config.workflowInputs), (config.exportRunId ? { distinct_id: distinctId } : undefined));
+            const clientPayload = Object.assign(Object.assign({}, config.workflowInputs), (config.discover ? { distinct_id: distinctId } : undefined));
             if (!config.eventType) {
                 throw new Error(`An input to 'event-type' was not provided`);
             }
@@ -524,12 +524,12 @@ function run() {
             else {
                 yield api.repositoryDispatch(DISTINCT_ID);
             }
-            // Exit Early Early if export-run-id is disabled
-            if (!config.exportRunId) {
+            // Exit Early Early if discover is disabled
+            if (!config.discover) {
                 core.info('Workflow dispatched! Skipping the retrieval of the run-id');
                 return;
             }
-            const timeoutMs = config.workflowTimeoutSeconds * 1000;
+            const timeoutMs = config.discoverTimeoutSeconds * 1000;
             let attemptNo = 0;
             let elapsedTime = Date.now() - startTime;
             core.info("Attempt to extract run ID from 'run-name'...");

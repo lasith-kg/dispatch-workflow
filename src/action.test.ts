@@ -36,8 +36,8 @@ describe('Action', () => {
             return mockEnvConfig.workflow
           case 'workflow-inputs':
             return mockEnvConfig.workflowInputs
-          case 'workflow-timeout-seconds':
-            return mockEnvConfig.workflowTimeoutSeconds
+          case 'discover-timeout-seconds':
+            return mockEnvConfig.discoverTimeoutSeconds
           case 'token':
             return mockEnvConfig.token
           default:
@@ -49,8 +49,8 @@ describe('Action', () => {
         .spyOn(core, 'getBooleanInput')
         .mockImplementation((input: string) => {
           switch (input) {
-            case 'export-run-id':
-              return mockEnvConfig.exportRunId
+            case 'discover':
+              return mockEnvConfig.discover
             default:
               throw new Error('invalid input requested')
           }
@@ -71,9 +71,9 @@ describe('Action', () => {
           ref: 'feature_branch',
           workflow: 'workflow.yml',
           workflowInputs: JSON.stringify(workflowInputs),
-          workflowTimeoutSeconds: '60',
+          discoverTimeoutSeconds: '60',
           token: 'token',
-          exportRunId: false
+          discover: false
         }
       })
 
@@ -89,9 +89,9 @@ describe('Action', () => {
         expect(config.ref).toStrictEqual('feature_branch')
         expect(config.workflow).toStrictEqual('workflow.yml')
         expect(config.workflowInputs).toStrictEqual(workflowInputs)
-        expect(config.workflowTimeoutSeconds).toStrictEqual(60)
+        expect(config.discoverTimeoutSeconds).toStrictEqual(60)
         expect(config.token).toStrictEqual('token')
-        expect(config.exportRunId).toStrictEqual(false)
+        expect(config.discover).toStrictEqual(false)
       })
 
       test('Should throw an error if a ref is not provided', () => {
@@ -142,9 +142,9 @@ describe('Action', () => {
           ref: '',
           workflow: '',
           workflowInputs: JSON.stringify(workflowInputs),
-          workflowTimeoutSeconds: '60',
+          discoverTimeoutSeconds: '60',
           token: 'token',
-          exportRunId: false
+          discover: false
         }
       })
 
@@ -160,9 +160,9 @@ describe('Action', () => {
         expect(config.ref).toBeUndefined()
         expect(config.workflow).toBeUndefined()
         expect(config.workflowInputs).toStrictEqual(workflowInputs)
-        expect(config.workflowTimeoutSeconds).toStrictEqual(60)
+        expect(config.discoverTimeoutSeconds).toStrictEqual(60)
         expect(config.token).toStrictEqual('token')
-        expect(config.exportRunId).toStrictEqual(false)
+        expect(config.discover).toStrictEqual(false)
       })
 
       test('Should throw an error if a ref is provided', () => {
@@ -194,9 +194,9 @@ describe('Action', () => {
           ref: 'feature_branch',
           workflow: 'workflow.yml',
           workflowInputs: JSON.stringify(workflowInputs),
-          workflowTimeoutSeconds: '60',
+          discoverTimeoutSeconds: '60',
           token: 'token',
-          exportRunId: false
+          discover: false
         }
       })
 
@@ -207,10 +207,10 @@ describe('Action', () => {
       })
 
       test('Should provide a default workflow timeout if none is supplied', () => {
-        mockEnvConfig.workflowTimeoutSeconds = ''
+        mockEnvConfig.discoverTimeoutSeconds = ''
         const config: ActionConfig = getConfig()
 
-        expect(config.workflowTimeoutSeconds).toStrictEqual(300)
+        expect(config.discoverTimeoutSeconds).toStrictEqual(300)
       })
 
       test('Should return an empty client payload if none is supplied', () => {

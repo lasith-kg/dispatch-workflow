@@ -63,15 +63,15 @@ describe('API', () => {
       ref: 'feature_branch',
       workflow: 'workflow.yml',
       workflowInputs,
-      workflowTimeoutSeconds: 60,
+      discoverTimeoutSeconds: 60,
       token: 'token',
-      exportRunId: true
+      discover: true
     }
 
     jest.spyOn(core, 'getBooleanInput').mockImplementation((input: string) => {
       switch (input) {
-        case 'export-run-id':
-          return mockEnvConfig.exportRunId
+        case 'discover':
+          return mockEnvConfig.discover
         default:
           throw new Error('invalid input requested')
       }
@@ -143,8 +143,8 @@ describe('API', () => {
       expect(dispatchedId).toStrictEqual(distinctId)
     })
 
-    it('should dispatch without a distinctId in the inputs if export-run-id is set to false', async () => {
-      mockEnvConfig.exportRunId = false
+    it('should dispatch without a distinctId in the inputs if discover is set to false', async () => {
+      mockEnvConfig.discover = false
       init(mockEnvConfig)
 
       const distinctId = uuid()
@@ -235,8 +235,8 @@ describe('API', () => {
       expect(dispatchedId).toStrictEqual(distinctId)
     })
 
-    it('should dispatch without a distinctId in the inputs if export-run-id is set to false', async () => {
-      mockEnvConfig.exportRunId = false
+    it('should dispatch without a distinctId in the inputs if discover is set to false', async () => {
+      mockEnvConfig.discover = false
       init(mockEnvConfig)
 
       const distinctId = uuid()

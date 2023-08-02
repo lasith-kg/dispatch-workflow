@@ -19,7 +19,7 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
   try {
     const inputs = {
       ...config.workflowInputs,
-      ...(config.exportRunId ? {distinct_id: distinctId} : undefined)
+      ...(config.discover ? {distinct_id: distinctId} : undefined)
     }
     if (!config.workflow) {
       throw new Error(`An input to 'workflow' was not provided`)
@@ -64,7 +64,7 @@ export async function repositoryDispatch(distinctId: string): Promise<void> {
   try {
     const clientPayload = {
       ...config.workflowInputs,
-      ...(config.exportRunId ? {distinct_id: distinctId} : undefined)
+      ...(config.discover ? {distinct_id: distinctId} : undefined)
     }
     if (!config.eventType) {
       throw new Error(`An input to 'event-type' was not provided`)

@@ -29,13 +29,13 @@ async function run(): Promise<void> {
       await api.repositoryDispatch(DISTINCT_ID)
     }
 
-    // Exit Early Early if export-run-id is disabled
-    if (!config.exportRunId) {
+    // Exit Early Early if discover is disabled
+    if (!config.discover) {
       core.info('Workflow dispatched! Skipping the retrieval of the run-id')
       return
     }
 
-    const timeoutMs = config.workflowTimeoutSeconds * 1000
+    const timeoutMs = config.discoverTimeoutSeconds * 1000
     let attemptNo = 0
     let elapsedTime = Date.now() - startTime
     core.info("Attempt to extract run ID from 'run-name'...")

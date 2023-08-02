@@ -45,9 +45,9 @@ export interface ActionConfig {
   workflowInputs: ActionWorkflowInputs
 
   /**
-   * Time until giving up on identifying the Run ID.
+   * Time until giving up on the discovery of the dispatched workflow and corresponding Run ID
    */
-  workflowTimeoutSeconds: number
+  discoverTimeoutSeconds: number
 
   /**
    * GitHub API token for making requests.
@@ -58,7 +58,7 @@ export interface ActionConfig {
    * A flag to enable the discovery of the Run ID from the dispatched workflow.
    * The remote workflow must be modified appropriately to expose a `distinct_id` in the `run-name`
    */
-  exportRunId: boolean
+  discover: boolean
 }
 
 interface ActionWorkflowInputs {
@@ -234,10 +234,10 @@ export function getConfig(): ActionConfig {
     ref: getRef(dispatchMethod),
     workflow: getWorkflow(dispatchMethod),
     workflowInputs: getWorkflowInputs(dispatchMethod),
-    workflowTimeoutSeconds:
-      getNumberFromValue(core.getInput('workflow-timeout-seconds')) ||
+    discoverTimeoutSeconds:
+      getNumberFromValue(core.getInput('discover-timeout-seconds')) ||
       WORKFLOW_TIMEOUT_SECONDS,
     token: core.getInput('token', {required: true}),
-    exportRunId: core.getBooleanInput('export-run-id')
+    discover: core.getBooleanInput('discover')
   }
 }
