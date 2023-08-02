@@ -37,12 +37,12 @@ var DispatchMethod;
 (function (DispatchMethod) {
     DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
     DispatchMethod["WorkflowDispatch"] = "workflow_dispatch";
-})(DispatchMethod = exports.DispatchMethod || (exports.DispatchMethod = {}));
+})(DispatchMethod || (exports.DispatchMethod = DispatchMethod = {}));
 var ActionOutputs;
 (function (ActionOutputs) {
     ActionOutputs["RunId"] = "run-id";
     ActionOutputs["RunUrl"] = "run-url";
-})(ActionOutputs = exports.ActionOutputs || (exports.ActionOutputs = {}));
+})(ActionOutputs || (exports.ActionOutputs = ActionOutputs = {}));
 function getNumberFromValue(value) {
     if (value === '') {
         return undefined;

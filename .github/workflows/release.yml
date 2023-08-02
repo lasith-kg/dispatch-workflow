@@ -15,20 +15,24 @@ on:
 jobs:
   release:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
     steps:
+      # - name: Get Releases GitHub Token
+      #   id: get-releases-token
+      #   uses: peter-murray/workflow-application-token-action@v2
+      #   with:
+      #     application_id: ${{ secrets.APPLICATION_ID }}
+      #     application_private_key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
+      #     permissions: "contents:write"
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0 # Need history for changelog generation
-          ref: "${{ github.event.repository.default_branch }}"
-      - id: git-config
-        name: Git Config
+          token: "${{ secrets.RELEASE_GITHUB_TOKEN }}"
+      - id: config-git
+        name: Config Git
         shell: bash
         run: |
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
+          git config user.name "dispatach-workflow-releases[bot]"
+          git config user.email "dispatach-workflow-releases[bot]@users.noreply.github.com"
       - name: Set Node.js lts
         uses: actions/setup-node@v3
         with:
@@ -59,25 +63,4 @@ jobs:
             ${{ github.event.inputs.version }} \
             --ci
         env:
-          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
-      - id: get-version
-        name: Get Version
-        shell: bash
-        run: |
-          version="$(node -p "require('./package.json').version")"
-          echo "version=${version}" >> "${GITHUB_OUTPUT}"
-      - name: Create Pull Request
-        id: create-version-release-pr
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          commit-message: Releases [${{ steps.get-version.outputs.version }}]
-          branch: "releases/${{ steps.get-version.outputs.version }}"
-          delete-branch: true
-          title: 'Releases [${{ steps.get-version.outputs.version }}]'
-          body: |
-            Releases
-            - **Increment:** ${{ inputs.version }}
-            - **New Version:** ${{ steps.get-version.outputs.version }}
-
-            [1]: https://github.com/peter-evans/create-pull-request
+          GITHUB_TOKEN: "${{ secrets.RELEASE_GITHUB_TOKEN }}"
