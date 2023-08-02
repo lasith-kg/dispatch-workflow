@@ -16,25 +16,17 @@ jobs:
       - run: |
           npm run all
   
-  integration-test:
+  integration-tests:
     runs-on: ubuntu-latest
-    if: ${{ github.actor != 'dependabot[bot]' }}
+    if: github.ref == github.event.repository.default_branch
     permissions:
       contents: write
       actions: write
+    env:
+      INTEGRATION_TEST_WORKFLOW_FILE: "integration-tests.yml"
+      INTEGRATION_TEST_WORKFLOW_ID: 64701969 # This ID Will Change On Fork
     steps:
       - uses: actions/checkout@v3
-      - uses: ./
-        id: just-workflow-dispatch
-        name: "Just Dispatch Workflow using workflow_dispatch Method"
-        with:
-          dispatch-method: "workflow_dispatch"
-          repo: "${{ github.event.repository.name }}"
-          owner: "${{ github.repository_owner }}"
-          ref: "main"
-          workflow: "integration-tests.yml"
-          token: "${{ secrets.GITHUB_TOKEN }}"
-          workflow-inputs: '{"placeholder": "placeholder"}'
       - uses: ./
         id: fail-ref-workflow-dispatch
         name: "Dispatch Workflow using workflow_dispatch Method, to a Non-existent Branch"
@@ -43,8 +35,8 @@ jobs:
           dispatch-method: "workflow_dispatch"
           repo: "${{ github.event.repository.name }}"
           owner: "${{ github.repository_owner }}"
-          ref: "non-existent-branch/${{ github.run_id }}"
-          workflow: "integration-tests.yml"
+          ref: "non-existent-branch/${{ github.run_id }}" # This branch cannot realistically exist
+          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}"
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
       - uses: ./
@@ -56,9 +48,35 @@ jobs:
           repo: "${{ github.event.repository.name }}"
           owner: "${{ github.repository_owner }}"
           ref: "main"
-          workflow: "${{ github.run_id }}.yml"
+          workflow: "${{ github.run_id }}.yml" # This workflow file cannot realistically exist
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
+      - uses: ./
+        id: fail-inputs-workflow-dispatch
+        name: "Dispatch Workflow using workflow_dispatch Method, with an unsupported workflow inputs"
+        continue-on-error: true
+        with:
+          dispatch-method: "workflow_dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          ref: "main"
+          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": 0}' # 0 is not a string type
+      - uses: ./
+        id: fail-timeout-workflow-dispatch
+        name: "Dispatch and Discover Workflow using workflow_dispatch Method, within an impossible period of time"
+        continue-on-error: true
+        with:
+          dispatch-method: "workflow_dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          ref: "main"
+          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_ID }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": "placeholder"}'
+          discover: true
+          discover-timeout-seconds: 0.1
       - id: verify-fail-workflow-dispatch
         name: "Verify Action Outputs for worflow-dispatch"
         shell: bash
@@ -72,6 +90,14 @@ jobs:
           if [[ "${{ steps.fail-file-workflow-dispatch.outcome }}" != "failure" ]]; then
             >&2 echo "🔴 fail-file-workflow-dispatch step was expected to fail"; exit 1
           fi
+
+          if [[ "${{ steps.fail-inputs-workflow-dispatch.outcome }}" != "failure" ]]; then
+            >&2 echo "🔴 fail-inputs-workflow-dispatch step was expected to fail"; exit 1
+          fi
+
+          if [[ "${{ steps.fail-timeout-workflow-dispatch.outcome }}" != "failure" ]]; then
+            >&2 echo "🔴 fail-timeout-workflow-dispatch step was expected to fail"; exit 1
+          fi
       - uses: ./
         id: wait-workflow-dispatch
         name: "Dispatch Using workflow_dispatch Method And Wait For Run-ID"
@@ -80,23 +106,10 @@ jobs:
           repo: "${{ github.event.repository.name }}"
           owner: "${{ github.repository_owner }}"
           ref: "refs/heads/main"
-          workflow: 64701969
+          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}"
           token: "${{ secrets.GITHUB_TOKEN }}"
           workflow-inputs: '{"placeholder": "placeholder"}'
           discover: true
-      - id: verify-workflow-dispatch
-        name: "Verify Action Outputs for worflow-dispatch"
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [[ -z "${{ steps.wait-workflow-dispatch.outputs.run-id }}" ]]; then
-            >&2 echo "🔴 wait-workflow-dispatch step should output 'run-id'"; exit 1
-          fi
-
-          if [[ -z "${{ steps.wait-workflow-dispatch.outputs.run-url }}" ]]; then
-            >&2 echo "🔴 wait-workflow-dispatch step should output 'run-url'"; exit 1
-          fi
       - uses: ./
         id: wait-repository-dispatch
         name: "Dispatch Using repository_dispatch Method And Wait For Run-ID"
@@ -114,6 +127,7 @@ jobs:
         run: |
           set -euo pipefail
 
+          # wait-repository-dispatch
           if [[ -z "${{ steps.wait-repository-dispatch.outputs.run-id }}" ]]; then
             >&2 echo "🔴 wait-repository-dispatch step should output 'run-id'"; exit 1
           fi
@@ -121,3 +135,23 @@ jobs:
           if [[ -z "${{ steps.wait-repository-dispatch.outputs.run-url }}" ]]; then
             >&2 echo "🔴 wait-repository-dispatch step should output 'run-url'"; exit 1
           fi
+
+          # wait-workflow-dispatch
+          if [[ -z "${{ steps.wait-workflow-dispatch.outputs.run-id }}" ]]; then
+            >&2 echo "🔴 wait-workflow-dispatch step should output 'run-id'"; exit 1
+          fi
+
+          if [[ -z "${{ steps.wait-workflow-dispatch.outputs.run-url }}" ]]; then
+            >&2 echo "🔴 wait-workflow-dispatch step should output 'run-url'"; exit 1
+          fi
+      - uses: ./
+        id: just-workflow-dispatch
+        name: "Just Dispatch Workflow using workflow_dispatch Method"
+        with:
+          dispatch-method: "workflow_dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          ref: "main"
+          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_ID }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: '{"placeholder": "placeholder"}'
