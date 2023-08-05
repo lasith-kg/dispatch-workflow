@@ -1,10 +1,19 @@
 # GitHub Action for Dispatching Workflows
 
+A **universal** action that supports dispatching workflows with either the `workflow_dispatch` or `repository_dispatch` event. Additionally, this action can be configured to **discover** the Run ID of a dispatched workflow through a **efficient** and **accurate** correlation algorithm.
+
+The latter algorithm was designed as a workaround for a [technical limitation](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203) that prevents the dispatch APIs from returning a Run ID.
+
+There was a need for this action as many currently available actions...
+
+- Support the `workflow_dispatch` or `repository_dispatch` event, **but not both**
+- Use Run ID extraction algorithms that are either **API-intensive** or **unreliable** on repositories that experience a high velocity of workflows
+
 # Acknowledgements
 
 This GitHub Action is a fork of [`codex-/return-dispatch`](https://github.com/Codex-/return-dispatch). This action supported the ability to extract a Run ID, but exclusively supported the `workflow_dispatch` method. I decided to fork this action as it had an intuitive code-base and excellent testing philosophy.
 
-From a **compatibility** and **performance** perspective, this GitHub Action superseedes [`codex-/return-dispatch`](https://github.com/Codex-/return-dispatch), as it additionally supports the `repository_dispatch` method and uses a more efficient algorithm to extract the Run ID from a dispatched workflow
+From a **compatibility** and **performance** perspective, this GitHub Action superseedes [`codex-/return-dispatch`](https://github.com/Codex-/return-dispatch), as it additionally supports the `repository_dispatch` method and uses a more efficient algorithm to extract the Run ID for a dispatched workflow
 
 # Usage
 
