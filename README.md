@@ -65,7 +65,35 @@ The below table shows the neccessary permissions for all the unique combinations
 
 # Outputs
 
-... Markdown Table
+By default, this GitHub Action has no outputs. However, when discovery mode is **enabled**, the Run ID and Run URL become exposed as outputs. With the Run ID, you can create some powerful automation where the parent workflow can wait for the status of the child workflow using the [`Codex-/await-remote-run`](https://github.com/Codex-/await-remote-run) GitHub Action.
+
+| Name      | Description                                    |
+| --------- | ---------------------------------------------- |
+| `run-id`  | The Run ID of the workflow that was dispatched |
+| `run-url` | The URL of the workflow that was dispatched    |
+
+```yaml
+steps:
+  - uses: lasith-kg/dispatch-workflow@v1
+    id: wait-repository-dispatch
+    name: 'Dispatch Using repository_dispatch Method And Wait For Run-ID'
+    with:
+      dispatch-method: 'repository_dispatch'
+      event-type: 'deploy'
+      repo: ${{ github.event.repository.name }}
+      owner: ${{ github.repository_owner }}
+      token: ${{ secrets.GITHUB_TOKEN }}
+      discover: true
+  - name: Await Run ID ${{ steps.wait-repository-dispatch.outputs.run-id }}
+    uses: Codex-/await-remote-run@v1
+    with:
+      token: ${{ secrets.GITHUB_TOKEN }}
+      repo: ${{ github.event.repository.name }}
+      owner: ${{ github.repository_owner }}
+      run_id: ${{ steps.wait-repository-dispatch.outputs.run-id }}
+      run_timeout_seconds: 300 # Optional
+      poll_interval_ms: 5000 # Optional
+```
 
 # Workflow Inputs
 
