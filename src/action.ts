@@ -13,13 +13,7 @@ export interface ActionConfig {
   dispatchMethod: DispatchMethod
 
   /**
-   * If the selected method is repository_dispatch, what event type will be triggered
-   * in the remote repository
-   */
-  eventType?: string
-
-  /**
-   * Repository of the action to await.
+   * Repository of the workflow to dispatch
    */
   repo: string
 
@@ -29,36 +23,41 @@ export interface ActionConfig {
   owner: string
 
   /**
+   * GitHub API token for making requests.
+   */
+  token: string
+
+  /**
    * If the selected method is workflow_dispatch, the git reference for the workflow.
    * The reference can be a branch or tag name.
    */
   ref?: string
 
   /**
-   * Workflow to return an ID for. Can be the ID or the workflow filename.
+   * If the selected dispatch method is workflow_dispatch, the ID or the workflow file name to dispatch
    */
   workflow?: string | number
 
   /**
-   * A flat JSON object, only supports strings (as per workflow inputs API).
+   * If the selected dispatch method is repository_dispatch, what event type will be triggered
+   * in the repository.
+   */
+  eventType?: string
+
+  /**
+   * A JSON object that contains extra information that will be provided to the dispatch call
    */
   workflowInputs: ActionWorkflowInputs
+
+  /**
+   * A flag to enable the discovery of the Run ID from the dispatched workflow.
+   */
+  discover: boolean
 
   /**
    * Time until giving up on the discovery of the dispatched workflow and corresponding Run ID
    */
   discoverTimeoutSeconds: number
-
-  /**
-   * GitHub API token for making requests.
-   */
-  token: string
-
-  /**
-   * A flag to enable the discovery of the Run ID from the dispatched workflow.
-   * The remote workflow must be modified appropriately to expose a `distinct_id` in the `run-name`
-   */
-  discover: boolean
 }
 
 interface ActionWorkflowInputs {
@@ -228,16 +227,16 @@ export function getConfig(): ActionConfig {
 
   return {
     dispatchMethod,
-    eventType: getEventType(dispatchMethod),
     repo: core.getInput('repo', {required: true}),
     owner: core.getInput('owner', {required: true}),
+    token: core.getInput('token', {required: true}),
     ref: getRef(dispatchMethod),
     workflow: getWorkflow(dispatchMethod),
+    eventType: getEventType(dispatchMethod),
     workflowInputs: getWorkflowInputs(dispatchMethod),
+    discover: core.getBooleanInput('discover'),
     discoverTimeoutSeconds:
       getNumberFromValue(core.getInput('discover-timeout-seconds')) ||
-      WORKFLOW_TIMEOUT_SECONDS,
-    token: core.getInput('token', {required: true}),
-    discover: core.getBooleanInput('discover')
+      WORKFLOW_TIMEOUT_SECONDS
   }
 }

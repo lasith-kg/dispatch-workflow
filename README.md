@@ -26,7 +26,18 @@ From a **compatibility** and **performance** perspective, this GitHub Action sup
 
 # Inputs
 
-... Markdown Table
+| Name                       | Description                                                                                                                           | Required      | Default |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------------- | ------- |
+| `dispatch-method`          | The method that will be used for dispatching GitHub workflows: `repository_dispatch`, `workflow_dispatch`                             | `true`        |         |
+| `repo`                     | Repository of the workflow to dispatch                                                                                                | `true`        |         |
+| `owner`                    | Owner of the given repository                                                                                                         | `true`        |         |
+| `token`                    | GitHub API token for making API requests                                                                                              | `true`        |         |
+| `ref`                      | If the selected dispatch method is `workflow_dispatch`, the git reference for the workflow. The reference can be a branch or tag name | `conditional` |         |
+| `workflow`                 | If the selected dispatch method is `workflow_dispatch`, the ID or the workflow file name to dispatch                                  | `conditional` |         |
+| `event-type`               | If the selected dispatch method is `repository_dispatch`, what event type will be triggered in the repository.                        | `conditional` |         |
+| `workflow-inputs`          | A JSON object that contains extra information that will be provided to the dispatch call                                              | `false`       | `'{}'`  |
+| `discover`                 | A flag to enable the discovery of the Run ID from the dispatched workflow                                                             | `false`       | `false` |
+| `discover-timeout-seconds` | Time until giving up on the discovery of the dispatched workflow and corresponding Run ID                                             | `false`       | `300`   |
 
 # Outputs
 
