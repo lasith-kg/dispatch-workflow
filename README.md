@@ -22,7 +22,31 @@ From a **compatibility** and **performance** perspective, this GitHub Action sup
 
 # Permissions
 
-... Markdown Table
+Dispatching a Workflow requires an authenticated `GITHUB_TOKEN`. The required permissions for this `GITHUB_TOKEN` depends on the following factors...
+
+- **Dispatch Method**: `repository_dispatch`, `workflow_dispatch`
+- **Run ID Discovery**: Enabled, Disabled
+- **Repository Visiblity**: Private, Public
+
+## Generating a `GITHUB_TOKEN`
+
+There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatching a workflow from the **current repository**, a **GitHub Actions Token** would be the most secure option. If you are dispatching a workflow to a **remote repository**, I would personally recommend a **GitHub App Token**. GitHub App Tokens are ephemeral (valid for 1 hour) and have fine grained access control over permissions and repositories. Additionally they are not bound to a particular developers identity, unlike a Personal Access Token.
+
+- Fine Grained Tokens
+  - [GitHub Actions Token](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
+  - [GitHub App Token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow)
+  - [Personal Access Token 🆕](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/)
+- Personal Access Tokens (Classic)
+  - I would **strongly** advise using this as they are not as secure as the fine-grained counterparts and can potentially be configured without an expiry time.
+
+The below table shows the neccessary permissions for all the unique combinations of these factors. If using a Fine Grained Token, ensure that the permissions correspond to the repository that contains the workflow you are attempting to dispatch.
+
+| Mode                               | Fine Grained Tokens                 | Personal Access Token (Classic)         |
+| ---------------------------------- | ----------------------------------- | --------------------------------------- |
+| `repository_dispatch`              | `contents: write`                   | Private: `repo` / Public: `public_repo` |
+| `repository_dispatch` + `discover` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
+| `worflow_dispatch`                 | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| `workflow_dispatch` + `discover`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 
 # Inputs
 
@@ -46,7 +70,3 @@ From a **compatibility** and **performance** perspective, this GitHub Action sup
 # Workflow Inputs
 
 Explain Limitations
-
-# Flow
-
-... Explanation of Algorithm
