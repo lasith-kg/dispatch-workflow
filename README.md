@@ -97,4 +97,67 @@ steps:
 
 # Workflow Inputs
 
-Explain Limitations
+This action supports the ability to provide workflow inputs for both the `repository_dispatch` and `workflow_dispatch` method. However, both methods have their unique limitations.
+
+## `repository_dispatch`
+
+> Source: [peter-evans/repository-dispatch](https://github.com/peter-evans/repository-dispatch#client-payload) # Client Payload
+
+The [Create a repository dispatch event](https://docs.github.com/en/free-pro-team@latest/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-dispatch-event) API call allows a maximum of **10** top-level properties in the workflow inputs JSON. If you use more than that you will see an error message like the following.
+
+```
+No more than 10 properties are allowed; 14 were supplied.
+```
+
+For example, this payload will fail because the `github` object has more than **10** top-level properties.
+
+```yaml
+workflow-inputs: ${{ toJson(github) }}
+```
+
+A simple work-around is that you can simply wrap the payload in a single top-level property. The following payload will succeed.
+
+```yaml
+workflow-inputs: '{"github": ${{ toJson(github) }}}'
+```
+
+Additionally, there is a limitation on the total data size of the client-payload. A very large payload may result in the following error
+
+```
+client_payload is too large
+```
+
+## `workflow_dispatch`
+
+The [Create a workflow dispatch event](https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event) API call also sets the maximum number of top-level properties in the workflow inputs JSON to **10**. Any default properties configured in the workflow file will be considered towards this count when inputs are omitted.
+
+An additional requirement is that all top-level properties **must** be a `string`. Any inputs represented as a `number` or `boolean` will get **rejected**. Therefore values of these
+types must be wrapped in **quotes** to successfully dispatch the workflow.
+
+```yaml
+# Invalid ❌
+  - uses: lasith-kg/dispatch-workflow@v1
+    id: workflow-dispatch
+    name: 'Dispatch Using workflow_dispatch Method'
+    with:
+      dispatch-method: 'workflow_dispatch'
+      ...
+      workflow-inputs: |
+        {
+          "foo": true,
+          "bar: 1
+        }
+
+# Valid 🟢
+  - uses: lasith-kg/dispatch-workflow@v1
+    id: workflow-dispatch
+    name: 'Dispatch Using workflow_dispatch Method'
+    with:
+      dispatch-method: 'workflow_dispatch'
+      ...
+      workflow-inputs: |
+        {
+          "foo": "true",
+          "bar: "1"
+        }
+```
