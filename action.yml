@@ -1,5 +1,8 @@
 name: 'Dispatch Workflow'
 description: 'A GitHub action to dispatch a remote GitHub workflow and optionally retrieve its information'
+branding:
+  icon: chevrons-right
+  color: black
 inputs:
   dispatch-method:
     required: true
@@ -35,7 +38,7 @@ inputs:
   discover-timeout-seconds:
     description: 'Time until giving up on the discovery of the dispatched workflow and corresponding Run ID.'
     required: false
-    default: '300'
+    default: '30'
 runs:
   using: 'node16'
   main: 'dist/index.js'

@@ -132,7 +132,7 @@ steps:
     with:
       ...
       discover: true
-      discover-timeout-seconds: 30  # Optional: Default to 300 seconds
+      discover-timeout-seconds: 30  # Optional: Default to 30 seconds
   - id: echo-run-id-url
     name: "Echo Run ID and Run URL"
     run: |
@@ -216,7 +216,7 @@ The below table shows the neccessary permissions for all the unique combinations
 | `event-type`               | If the selected dispatch method is `repository_dispatch`, what event type will be triggered in the repository.                        | `conditional` |         |
 | `workflow-inputs`          | A JSON object that contains extra information that will be provided to the dispatch call                                              | `false`       | `'{}'`  |
 | `discover`                 | A flag to enable the discovery of the Run ID from the dispatched workflow                                                             | `false`       | `false` |
-| `discover-timeout-seconds` | Time until giving up on the discovery of the dispatched workflow and corresponding Run ID                                             | `false`       | `300`   |
+| `discover-timeout-seconds` | Time until giving up on the discovery of the dispatched workflow and corresponding Run ID                                             | `false`       | `30`   |
 
 # Outputs
 
@@ -246,7 +246,7 @@ steps:
       repo: ${{ github.event.repository.name }}
       owner: ${{ github.repository_owner }}
       run_id: ${{ steps.wait-repository-dispatch.outputs.run-id }}
-      run_timeout_seconds: 300 # Optional
+      run_timeout_seconds: 30 # Optional
       poll_interval_ms: 5000 # Optional
 ```
 
