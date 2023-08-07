@@ -4,7 +4,7 @@ A **universal** action that supports dispatching workflows with either the `work
 
 The latter algorithm was designed as a workaround for a [technical limitation](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203) that prevents the dispatch APIs from returning a Run ID.
 
-There was a need for this action as many currently available actions...
+There was a need for this action as currently available actions...
 
 - Support the `workflow_dispatch` or `repository_dispatch` event, **but not both**
 - Use Run ID extraction algorithms that are either **API-intensive** or **unreliable** on repositories that experience a high velocity of workflows
@@ -17,24 +17,170 @@ From a **compatibility** and **performance** perspective, this GitHub Action sup
 
 # Usage
 
-## Workflow Dispatch
+## Creating Dispacth Events
 
-... Code Examples
+### `workflow_dispatch`
 
-## Repository Dispatch
+```yaml
+steps:
+  - uses: lasith-kg/dispatch-workflow@v1
+    id: workflow-dispatch
+    name: "Dispatch Workflow using workflow_dispatch Method"
+    with:
+      dispatch-method: workflow_dispatch
+      repo: repository-name
+      owner: repository-owner
+      ref: refs/heads/main # or main
+      workflow: automation-test.yml # Or Workflow ID
+      token: ${{ secrets.TOKEN }} # GitHub Token With Relevant Permissions
+      workflow-inputs: |
+        {
+          "string-type": "placeholder",
+          "number-type": "1"            // Workaround for 'Number' types
+          "boolean-type": "true"        // Workaround for 'Boolean' types
+        }
+```
 
-... Code Examples
+### `repository_dispatch`
 
-## Dicovery Mode
+```yaml
+steps:
+  - uses: lasith-kg/dispatch-workflow@v1
+    id: repository-dispatch
+    name: "Dispatch Workflow using repository_dispatch Method"
+    with:
+      dispatch-method: repository_dispatch
+      repo: repository-name
+      owner: repository-owner
+      event-type: deploy # Event To Trigger From Workflow
+      token: ${{ secrets.TOKEN }} # GitHub Token With Relevant Permissions
+      workflow-inputs: |
+        {
+          "string-type": "placeholder",
+          "nested": {                    // Supports Nesting
+            "number-type": 1,            // Supports Native 'Number' types
+            "boolean-type": true,        // Supports Native 'Boolean' types
+          }
+        }
+```
 
-... Code Examples
+## Receiving Dispatch Events
+
+### `workflow_dispatch`
+
+```yaml
+# .github/workflows/automation-test.yml [refs/heads/main]
+name: Workflow Name
+on:
+  workflow_dispatch:
+    inputs:
+      string-type:
+        description: An input of type 'String'
+        required: true
+        type: string
+      number-type:
+        description: An input of type 'Number'
+        type: number
+      boolean-type:
+        description: An input of type 'Boolean'
+        type: boolean
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo Inputs
+        run: |
+          echo "${{ inputs.string-type }}" # "placeholder"
+          if [[ "${{ inputs.number-type }}" -gt -1 ]]; then echo "🟢"; fi       # 🟢
+          if [[ "${{ inputs.boolean-type }}" == "true" ]]; then echo "🟢"; fi   # 🟢
+```
+
+### `repository_dispatch`
+
+```yaml
+name: Workflow Name
+on:
+  repository_dispatch:
+    types:
+      - deploy
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo Inputs
+        run: |
+          echo "${{ github.event.client_payload.string-type }}" # "placeholder"
+          if [[ "${{ github.event.client_payload.nested.number-type }}" -gt -1 ]]; then echo "🟢"; fi      # 🟢
+          if [[ "${{ github.event.client_payload.nested.boolean-type }}" == "true" ]]; then echo "🟢"; fi  # 🟢
+```
+
+## Dicovery
+
+One of the drawbacks with both workflow dispatch methods, is that they do not natively return a Run ID that allows us to query for the status of our dispatched workflow. This technical limitation is discussed more in-depth in this [community discussion](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203). We can work around this by including a locally generated **Distinct ID** alongside our workflow dispatch event. We then have the ability to **discover** the dispatched workflow, from all workflow runs, by correlating it to this **Distinct ID**.
+
+This functionality is **disabled by default**, but can be enabled with the `discover: true` configuration. The receiving workflow must then be modified appropriated to intercept this **Distinct ID**.
+
+### Creating Dispatch Events with Discovery
+
+```yaml
+steps:
+  - uses: lasith-kg/dispatch-workflow@v1
+    id: dispatch-with-discovery
+    name: "Dispatch Workflow With Discovery"
+    with:
+      ...
+      discover: true
+      discover-timeout-seconds: 30  # Optional: Default to 300 seconds
+  - id: echo-run-id-url
+    name: "Echo Run ID and Run URL"
+    run: |
+      echo "${{ steps.dispatch-with-discovery.outputs.run-id }}"
+      echo "${{ steps.dispatch-with-discovery.outputs.run-url }}"
+```
+
+### Receiving Events with Discovery
+
+On September 26, 2022, GitHub introduced the ability to set [dynamic names for workflow runs](https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/). The new `run-name` attribute will accept expressions, thus allowing us to inject the **Distinct ID** into the queryable view.
+
+The expression to expose the **Distinct ID** in the `run-name` depends on what dispatch method you are using. The included expressions have been configured in a way to return a placeholder value `N/A` if a **Distinct ID** is not available.
+
+#### `workflow_dispatch`
+
+```yaml
+name: Workflow Name
+run-name: Workflow Name [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
+
+on:
+  workflow_dispatch:
+    inputs:
+      distinct_id:
+        description: "Distinct ID"
+        required: false
+```
+
+#### `repository_dispatch`
+
+```yaml
+name: Workflow Name
+run-name: >
+  Workflow Name [${{
+    github.event.client_payload.distinct_id &&
+    github.event.client_payload.distinct_id || 'N/A' }}]
+
+on:
+  repository_dispatch:
+    types:
+      - deploy
+```
 
 # Permissions
 
 Dispatching a Workflow requires an authenticated `GITHUB_TOKEN`. The required permissions for this `GITHUB_TOKEN` depends on the following factors...
 
 - **Dispatch Method**: `repository_dispatch`, `workflow_dispatch`
-- **Run ID Discovery**: Enabled, Disabled
+- **Discovery**: `true`, `false`
 - **Repository Visiblity**: Private, Public
 
 ## Generating a `GITHUB_TOKEN`
@@ -50,12 +196,12 @@ There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatc
 
 The below table shows the neccessary permissions for all the unique combinations of these factors. If using a Fine Grained Token, ensure that the permissions correspond to the repository that contains the workflow you are attempting to dispatch.
 
-| Mode                               | Fine Grained Tokens                 | Personal Access Token (Classic)         |
-| ---------------------------------- | ----------------------------------- | --------------------------------------- |
-| `repository_dispatch`              | `contents: write`                   | Private: `repo` / Public: `public_repo` |
-| `repository_dispatch` + `discover` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
-| `worflow_dispatch`                 | `actions: write`                    | Private: `repo` / Public: `public_repo` |
-| `workflow_dispatch` + `discover`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| Mode                                      | Fine Grained Tokens                 | Personal Access Token (Classic)         |
+| ----------------------------------------  | ----------------------------------- | --------------------------------------- |
+| `repository_dispatch`                     | `contents: write`                   | Private: `repo` / Public: `public_repo` |
+| `repository_dispatch` + `discovery: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
+| `worflow_dispatch`                        | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| `workflow_dispatch` + `discovery: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 
 # Inputs
 
