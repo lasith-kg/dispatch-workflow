@@ -25,7 +25,7 @@ From a **compatibility** and **performance** perspective, this GitHub Action sup
 steps:
   - uses: lasith-kg/dispatch-workflow@v1
     id: workflow-dispatch
-    name: "Dispatch Workflow using workflow_dispatch Method"
+    name: 'Dispatch Workflow using workflow_dispatch Method'
     with:
       dispatch-method: workflow_dispatch
       repo: repository-name
@@ -47,7 +47,7 @@ steps:
 steps:
   - uses: lasith-kg/dispatch-workflow@v1
     id: repository-dispatch
-    name: "Dispatch Workflow using repository_dispatch Method"
+    name: 'Dispatch Workflow using repository_dispatch Method'
     with:
       dispatch-method: repository_dispatch
       repo: repository-name
@@ -132,7 +132,7 @@ steps:
     with:
       ...
       discover: true
-      discover-timeout-seconds: 30  # Optional: Default to 300 seconds
+      discover-timeout-seconds: 30  # Optional: Default to 30 seconds
   - id: echo-run-id-url
     name: "Echo Run ID and Run URL"
     run: |
@@ -156,7 +156,7 @@ on:
   workflow_dispatch:
     inputs:
       distinct_id:
-        description: "Distinct ID"
+        description: 'Distinct ID'
         required: false
 ```
 
@@ -196,11 +196,11 @@ There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatc
 
 The below table shows the neccessary permissions for all the unique combinations of these factors. If using a Fine Grained Token, ensure that the permissions correspond to the repository that contains the workflow you are attempting to dispatch.
 
-| Mode                                      | Fine Grained Tokens                 | Personal Access Token (Classic)         |
-| ----------------------------------------  | ----------------------------------- | --------------------------------------- |
-| `repository_dispatch`                     | `contents: write`                   | Private: `repo` / Public: `public_repo` |
+| Mode                                     | Fine Grained Tokens                 | Personal Access Token (Classic)         |
+| ---------------------------------------- | ----------------------------------- | --------------------------------------- |
+| `repository_dispatch`                    | `contents: write`                   | Private: `repo` / Public: `public_repo` |
 | `repository_dispatch` + `discover: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
-| `worflow_dispatch`                        | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| `worflow_dispatch`                       | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 | `workflow_dispatch` + `discover: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 
 # Inputs
@@ -216,7 +216,7 @@ The below table shows the neccessary permissions for all the unique combinations
 | `event-type`               | If the selected dispatch method is `repository_dispatch`, what event type will be triggered in the repository.                        | `conditional` |         |
 | `workflow-inputs`          | A JSON object that contains extra information that will be provided to the dispatch call                                              | `false`       | `'{}'`  |
 | `discover`                 | A flag to enable the discovery of the Run ID from the dispatched workflow                                                             | `false`       | `false` |
-| `discover-timeout-seconds` | Time until giving up on the discovery of the dispatched workflow and corresponding Run ID                                             | `false`       | `300`   |
+| `discover-timeout-seconds` | Time until giving up on the discovery of the dispatched workflow and corresponding Run ID                                             | `false`       | `30`    |
 
 # Outputs
 
