@@ -11,13 +11,13 @@ There was a need for this action as currently available actions...
 
 # Acknowledgements
 
-This GitHub Action is a fork of [`codex-/return-dispatch`](https://github.com/Codex-/return-dispatch). This action supported the ability to extract a Run ID, but exclusively supported the `workflow_dispatch` method. I decided to fork this action as it had an intuitive code-base and excellent testing philosophy.
+This GitHub Action is a fork of [`codex-/return-dispatch`](https://github.com/codex-/return-dispatch). This action supported the ability to extract a Run ID, but exclusively supported the `workflow_dispatch` method. I decided to fork this action as it had an intuitive code-base and excellent testing philosophy.
 
-From a **compatibility** and **performance** perspective, this GitHub Action superseedes [`codex-/return-dispatch`](https://github.com/Codex-/return-dispatch), as it additionally supports the `repository_dispatch` method and uses a more efficient algorithm to extract the Run ID for a dispatched workflow
+From a **compatibility** and **performance** perspective, this GitHub Action superseedes [`codex-/return-dispatch`](https://github.com/codex-/return-dispatch), as it additionally supports the `repository_dispatch` method and uses a more efficient algorithm to extract the Run ID for a dispatched workflow
 
 # Usage
 
-## Creating Dispacth Events
+## Creating Dispatch Events
 
 ### `workflow_dispatch`
 
@@ -118,9 +118,9 @@ jobs:
 
 ## Dicovery
 
-One of the drawbacks with both workflow dispatch methods, is that they do not natively return a Run ID that allows us to query for the status of our dispatched workflow. This technical limitation is discussed more in-depth in this [community discussion](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203). We can work around this by encorporating a **Distinct ID** into our workflow dispatch event. We then have the ability to **discover** the dispatched workflow, from all workflow runs, by correlating it to this **Distinct ID**.
+One of the drawbacks with both workflow dispatch methods, is that they do not natively return a Run ID that allows us to query for the status of our dispatched workflow. This technical limitation is discussed more in-depth in this [community discussion](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203). We can work around this by encorporating a **Distinct ID** into our workflow dispatch event. We then have the ability to **discover** the dispatched workflow, from all workflow runs, by correlating it to the **Distinct ID**.
 
-This functionality is **disabled by default**, but can be enabled with the `discover: true` configuration. The receiving workflow must then be modified appropriated to intercept this **Distinct ID**.
+This functionality is **disabled by default**, but can be enabled with the `discover: true` configuration. The receiving workflow must then be modified appropriated to intercept the **Distinct ID**.
 
 ### Creating Dispatch Events with Discovery
 
@@ -192,16 +192,16 @@ There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatc
   - [GitHub App Token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow)
   - [Personal Access Token 🆕](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/)
 - Personal Access Tokens (Classic)
-  - I would **strongly** advise using this as they are not as secure as the fine-grained counterparts and can potentially be configured without an expiry time.
+  - I would **strongly** advise using this as they are not as secure as it's [fine-grained replacement](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/) and can potentially be configured without an expiry time.
 
 The below table shows the neccessary permissions for all the unique combinations of these factors. If using a Fine Grained Token, ensure that the permissions correspond to the repository that contains the workflow you are attempting to dispatch.
 
 | Mode                                      | Fine Grained Tokens                 | Personal Access Token (Classic)         |
 | ----------------------------------------  | ----------------------------------- | --------------------------------------- |
 | `repository_dispatch`                     | `contents: write`                   | Private: `repo` / Public: `public_repo` |
-| `repository_dispatch` + `discovery: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
+| `repository_dispatch` + `discover: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
 | `worflow_dispatch`                        | `actions: write`                    | Private: `repo` / Public: `public_repo` |
-| `workflow_dispatch` + `discovery: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| `workflow_dispatch` + `discover: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 
 # Inputs
 
@@ -220,7 +220,7 @@ The below table shows the neccessary permissions for all the unique combinations
 
 # Outputs
 
-By default, this GitHub Action has no outputs. However, when discovery mode is **enabled**, the Run ID and Run URL become exposed as outputs. With the Run ID, you can create some powerful automation where the parent workflow can wait for the status of the child workflow using the [`Codex-/await-remote-run`](https://github.com/Codex-/await-remote-run) GitHub Action.
+By default, this GitHub Action has no outputs. However, when discovery mode is **enabled**, the Run ID and Run URL become exposed as outputs. With the Run ID, you can create some powerful automation where the parent workflow can wait for the status of the child workflow using the [`codex-/await-remote-run`](https://github.com/codex-/await-remote-run) GitHub Action.
 
 | Name      | Description                                    |
 | --------- | ---------------------------------------------- |
@@ -240,7 +240,7 @@ steps:
       token: ${{ secrets.GITHUB_TOKEN }}
       discover: true
   - name: Await Run ID ${{ steps.wait-repository-dispatch.outputs.run-id }}
-    uses: Codex-/await-remote-run@v1
+    uses: codex-/await-remote-run@v1
     with:
       token: ${{ secrets.GITHUB_TOKEN }}
       repo: ${{ github.event.repository.name }}
