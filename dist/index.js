@@ -182,16 +182,16 @@ function getConfig() {
     const dispatchMethod = getDispatchMethod();
     return {
         dispatchMethod,
-        eventType: getEventType(dispatchMethod),
         repo: core.getInput('repo', { required: true }),
         owner: core.getInput('owner', { required: true }),
+        token: core.getInput('token', { required: true }),
         ref: getRef(dispatchMethod),
         workflow: getWorkflow(dispatchMethod),
+        eventType: getEventType(dispatchMethod),
         workflowInputs: getWorkflowInputs(dispatchMethod),
+        discover: core.getBooleanInput('discover'),
         discoverTimeoutSeconds: getNumberFromValue(core.getInput('discover-timeout-seconds')) ||
-            WORKFLOW_TIMEOUT_SECONDS,
-        token: core.getInput('token', { required: true }),
-        discover: core.getBooleanInput('discover')
+            WORKFLOW_TIMEOUT_SECONDS
     };
 }
 exports.getConfig = getConfig;

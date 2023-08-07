@@ -4,37 +4,38 @@ inputs:
   dispatch-method:
     required: true
     description: 'The method that will be used for dispatching GitHub workflows: repository_dispatch, workflow_dispatch.'
-  event-type:
-    required: false
-    description: 'If the selected method is repository_dispatch, what event type will be triggered in the remote repository.'
   repo:
-    description: 'Repository of the action to dispatch.'
+    description: 'Repository of the workflow to dispatch.'
     required: true
   owner:
     description: 'Owner of the given repository.'
     required: true
-  ref:
-    description: 'The git reference for the workflow. The reference can be a branch or tag name.'
-    required: false
-  workflow:
-    description: 'Workflow to return an ID for. Can be the ID or the workflow filename.'
-    required: false
-  workflow-inputs:
-    description: 'A JSON object that contains extra information that will be provided to the workflow'
-    required: false
   token:
     description: 'GitHub API token for making API requests.'
     required: true
-  discover:
+  ref:
     description: >
-      A flag to enable the discovery of the Run ID from the dispatched workflow. 
-      The remote workflow must be modified appropriately to expose a `distinct_id` in the `run-name`
+      'If the selected dispatch method is workflow_dispatch, the git reference for the workflow.
+       The reference can be a branch or tag name.'
     required: false
-    default: "false"
+  workflow:
+    description: 'If the selected dispatch method is workflow_dispatch, the ID or the workflow file name to dispatch.'
+    required: false
+  event-type:
+    required: false
+    description: 'If the selected dispatch method is repository_dispatch, what event type will be triggered in the repository.'
+  workflow-inputs:
+    description: 'A JSON object that contains extra information that will be provided to the dispatch call.'
+    required: false
+    default: '{}'
+  discover:
+    description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
+    required: false
+    default: 'false'
   discover-timeout-seconds:
     description: 'Time until giving up on the discovery of the dispatched workflow and corresponding Run ID.'
     required: false
-    default: "300"
+    default: '300'
 runs:
   using: 'node16'
   main: 'dist/index.js'
