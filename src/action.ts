@@ -1,6 +1,6 @@
 import * as core from '@actions/core'
 
-const WORKFLOW_TIMEOUT_SECONDS = 5 * 60
+const WORKFLOW_TIMEOUT_SECONDS = 30
 
 /**
  * action.yml definition.

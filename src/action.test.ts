@@ -210,7 +210,7 @@ describe('Action', () => {
         mockEnvConfig.discoverTimeoutSeconds = ''
         const config: ActionConfig = getConfig()
 
-        expect(config.discoverTimeoutSeconds).toStrictEqual(300)
+        expect(config.discoverTimeoutSeconds).toStrictEqual(30)
       })
 
       test('Should return an empty client payload if none is supplied', () => {

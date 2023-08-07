@@ -38,7 +38,7 @@ inputs:
   discover-timeout-seconds:
     description: 'Time until giving up on the discovery of the dispatched workflow and corresponding Run ID.'
     required: false
-    default: '300'
+    default: '30'
 runs:
   using: 'node16'
   main: 'dist/index.js'
