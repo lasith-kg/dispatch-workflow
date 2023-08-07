@@ -1,5 +1,8 @@
 name: 'Dispatch Workflow'
 description: 'A GitHub action to dispatch a remote GitHub workflow and optionally retrieve its information'
+branding:
+  icon: chevrons-right
+  color: black
 inputs:
   dispatch-method:
     required: true
