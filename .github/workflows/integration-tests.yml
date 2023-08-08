@@ -15,14 +15,30 @@ on:
       distinct_id:
         description: "Distinct ID"
         required: false
-      placeholder:
-        description: "Placeholder Input"
-        required: false
-        default: 'placeholder'
+      string-type:
+        description: An input of type 'String'
+        required: true
+        type: string
+      number-type:
+        description: An input of type 'Number'
+        type: number
+      boolean-type:
+        description: An input of type 'Boolean'
+        type: boolean
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Echo Hello World
-        run: echo "Hello World 👋"
+      - name: Validate workflow_dispatch
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "${{ inputs.string-type }}" # "placeholder"
+          if [[ "${{ inputs.number-type }}" -gt -1 ]]; then echo "🟢"; fi
+          if [[ "${{ inputs.boolean-type }}" == "true" ]]; then echo "🟢"; fi
+      - name: Validate repository_dispatch
+        if: github.event_name == 'repository_dispatch'
+        run: |
+          echo "${{ github.event.client_payload.string-type }}" # "placeholder"
+          if [[ "${{ github.event.client_payload.nested.number-type }}" -gt -1 ]]; then echo "🟢";
+          if [[ "${{ github.event.client_payload.nested.boolean-type }}" == "true" ]]; then echo "🟢";
