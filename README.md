@@ -36,7 +36,7 @@ steps:
       workflow-inputs: |
         {
           "string-type": "placeholder",
-          "number-type": "1"            // Workaround for 'Number' types
+          "number-type": "1",           // Workaround for 'Number' types
           "boolean-type": "true"        // Workaround for 'Boolean' types
         }
 ```
@@ -59,7 +59,7 @@ steps:
           "string-type": "placeholder",
           "nested": {                    // Supports Nesting
             "number-type": 1,            // Supports Native 'Number' types
-            "boolean-type": true,        // Supports Native 'Boolean' types
+            "boolean-type": true         // Supports Native 'Boolean' types
           }
         }
 ```
