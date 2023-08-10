@@ -1,4 +1,5 @@
 import * as core from '@actions/core'
+import {WorkflowRun} from './api.types'
 
 function getBranchNameFromHeadRef(ref: string): string | undefined {
   const refItems = ref.split(/\/?refs\/heads\//)
@@ -36,4 +37,19 @@ export function getBranchNameFromRef(ref?: string): string | undefined {
    * [contents:write] permissions
    */
   return getBranchNameFromHeadRef(ref) || ref
+}
+
+export function getDispatchedWorkflowRun(
+  workflowRuns: WorkflowRun[],
+  distinctID: string
+): WorkflowRun {
+  const dispatchedWorkflow = workflowRuns.find(workflowRun =>
+    new RegExp(distinctID).test(workflowRun.name)
+  )
+  if (dispatchedWorkflow) {
+    return dispatchedWorkflow
+  }
+  throw new Error(
+    'getDispatchedWorkflowRun: Failed to find dispatched workflow'
+  )
 }

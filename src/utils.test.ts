@@ -1,5 +1,7 @@
 import {describe, expect, it, jest} from '@jest/globals'
-import {getBranchNameFromRef} from './utils'
+import {getBranchNameFromRef, getDispatchedWorkflowRun} from './utils'
+import {v4 as uuid} from 'uuid'
+import {WorkflowRun} from './api.types'
 
 jest.mock('@actions/core')
 
@@ -43,6 +45,54 @@ describe('utils', () => {
       const branch = getBranchNameFromRef(undefined)
 
       expect(branch).toBeUndefined()
+    })
+  })
+
+  describe('getDispatchedWorkflowRun', () => {
+    const mockWorkflowName = 'Mock Workflow'
+    const distinctId = uuid()
+
+    it('should return the dispatched workflow run', () => {
+      const mockWorkflowRuns: WorkflowRun[] = [
+        {
+          id: 0,
+          name: `${mockWorkflowName} [${distinctId}]`,
+          htmlUrl: 'http://github.com/0'
+        },
+        {
+          id: 1,
+          name: `${mockWorkflowName} [${uuid()}]`,
+          htmlUrl: 'http://github.com/1'
+        }
+      ]
+      const dispatchedWorkflowRun = getDispatchedWorkflowRun(
+        mockWorkflowRuns,
+        distinctId
+      )
+
+      expect(dispatchedWorkflowRun).toBeDefined()
+      expect(dispatchedWorkflowRun.id).toStrictEqual(0)
+      expect(dispatchedWorkflowRun.name).toContain(distinctId)
+    })
+
+    it('should throw an error if dispatched workflow is not found', () => {
+      const mockWorkflowRuns: WorkflowRun[] = [
+        {
+          id: 1,
+          name: `${mockWorkflowName} [${uuid()}]`,
+          htmlUrl: 'http://github.com/1'
+        }
+      ]
+      expect(() =>
+        getDispatchedWorkflowRun(mockWorkflowRuns, distinctId)
+      ).toThrowError()
+    })
+
+    it('should throw an error if no workflow runs are provided', () => {
+      const mockWorkflowRuns: WorkflowRun[] = []
+      expect(() =>
+        getDispatchedWorkflowRun(mockWorkflowRuns, distinctId)
+      ).toThrowError()
     })
   })
 })

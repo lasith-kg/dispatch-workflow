@@ -1,7 +1,5 @@
 import * as core from '@actions/core'
 
-const WORKFLOW_TIMEOUT_SECONDS = 30
-
 /**
  * action.yml definition.
  */
@@ -53,11 +51,6 @@ export interface ActionConfig {
    * A flag to enable the discovery of the Run ID from the dispatched workflow.
    */
   discover: boolean
-
-  /**
-   * Time until giving up on the discovery of the dispatched workflow and corresponding Run ID
-   */
-  discoverTimeoutSeconds: number
 }
 
 interface ActionWorkflowInputs {
@@ -75,10 +68,6 @@ export enum ActionOutputs {
 }
 
 function getNumberFromValue(value: string): number | undefined {
-  if (value === '') {
-    return undefined
-  }
-
   try {
     const num = parseInt(value)
     if (isNaN(num)) {
@@ -234,9 +223,6 @@ export function getConfig(): ActionConfig {
     workflow: getWorkflow(dispatchMethod),
     eventType: getEventType(dispatchMethod),
     workflowInputs: getWorkflowInputs(dispatchMethod),
-    discover: core.getBooleanInput('discover'),
-    discoverTimeoutSeconds:
-      getNumberFromValue(core.getInput('discover-timeout-seconds')) ||
-      WORKFLOW_TIMEOUT_SECONDS
+    discover: core.getBooleanInput('discover')
   }
 }

@@ -32,7 +32,6 @@ var __importStar = (this && this.__importStar) || function (mod) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getConfig = exports.ActionOutputs = exports.DispatchMethod = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const WORKFLOW_TIMEOUT_SECONDS = 30;
 var DispatchMethod;
 (function (DispatchMethod) {
     DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
@@ -44,9 +43,6 @@ var ActionOutputs;
     ActionOutputs["RunUrl"] = "run-url";
 })(ActionOutputs || (exports.ActionOutputs = ActionOutputs = {}));
 function getNumberFromValue(value) {
-    if (value === '') {
-        return undefined;
-    }
     try {
         const num = parseInt(value);
         if (isNaN(num)) {
@@ -189,9 +185,7 @@ function getConfig() {
         workflow: getWorkflow(dispatchMethod),
         eventType: getEventType(dispatchMethod),
         workflowInputs: getWorkflowInputs(dispatchMethod),
-        discover: core.getBooleanInput('discover'),
-        discoverTimeoutSeconds: getNumberFromValue(core.getInput('discover-timeout-seconds')) ||
-            WORKFLOW_TIMEOUT_SECONDS
+        discover: core.getBooleanInput('discover')
     };
 }
 exports.getConfig = getConfig;
@@ -237,7 +231,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.retryOrDie = exports.getDefaultBranch = exports.getWorkflowRuns = exports.getWorkflowId = exports.repositoryDispatch = exports.workflowDispatch = exports.init = void 0;
+exports.getDefaultBranch = exports.getWorkflowRuns = exports.getWorkflowId = exports.repositoryDispatch = exports.workflowDispatch = exports.init = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const action_1 = __nccwpck_require__(9139);
@@ -323,138 +317,91 @@ Client Payload: ${JSON.stringify(clientPayload)}`);
 }
 exports.repositoryDispatch = repositoryDispatch;
 function getWorkflowId(workflowFilename) {
-    var _a;
     return __awaiter(this, void 0, void 0, function* () {
-        try {
-            // https://docs.github.com/en/rest/reference/actions#list-repository-workflows
-            const response = yield octokit.rest.actions.listRepoWorkflows({
-                owner: config.owner,
-                repo: config.repo
-            });
-            if (response.status !== 200) {
-                throw new Error(`Failed to get workflows, expected 200 but received ${response.status}`);
-            }
-            const workflowId = (_a = response.data.workflows.find(workflow => new RegExp(workflowFilename).test(workflow.path))) === null || _a === void 0 ? void 0 : _a.id;
-            if (workflowId === undefined) {
-                throw new Error(`Unable to find ID for Workflow: ${workflowFilename}`);
-            }
-            return workflowId;
+        // https://docs.github.com/en/rest/reference/actions#list-repository-workflows
+        const response = yield octokit.rest.actions.listRepoWorkflows({
+            owner: config.owner,
+            repo: config.repo
+        });
+        if (response.status !== 200) {
+            throw new Error(`Failed to get workflows, expected 200 but received ${response.status}`);
         }
-        catch (error) {
-            if (error instanceof Error) {
-                core.error(`getWorkflowId: An unexpected error has occurred: ${error.message}`);
-                error.stack && core.debug(error.stack);
-            }
-            throw error;
+        const workflow = response.data.workflows.find(workflow => new RegExp(workflowFilename).test(workflow.path));
+        if (!workflow) {
+            throw new Error(`getWorkflowId: Unable to find ID for Workflow: ${workflowFilename}`);
         }
+        return workflow.id;
     });
 }
 exports.getWorkflowId = getWorkflowId;
 function getWorkflowRuns() {
     return __awaiter(this, void 0, void 0, function* () {
-        try {
-            let status;
-            let branchName;
-            let response;
-            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
-                branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
-                if (!config.workflow) {
-                    throw new Error(`An input to 'workflow' was not provided`);
-                }
-                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-                response = yield octokit.rest.actions.listWorkflowRuns(Object.assign({ owner: config.owner, repo: config.repo, workflow_id: config.workflow }, (branchName
-                    ? {
-                        branch: branchName,
-                        per_page: 5
-                    }
-                    : {
-                        per_page: 10
-                    })));
-                status = response.status;
+        let status;
+        let branchName;
+        let response;
+        if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+            branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
+            if (!config.workflow) {
+                throw new Error(`An input to 'workflow' was not provided`);
             }
-            else {
-                // repository_dipsatch can only be triggered from the default branch
-                const branchName = yield getDefaultBranch();
-                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
-                response = yield octokit.rest.actions.listWorkflowRunsForRepo({
-                    owner: config.owner,
-                    repo: config.repo,
+            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
+            response = yield octokit.rest.actions.listWorkflowRuns(Object.assign({ owner: config.owner, repo: config.repo, workflow_id: config.workflow }, (branchName
+                ? {
                     branch: branchName,
-                    event: action_1.DispatchMethod.RepositoryDispatch,
                     per_page: 5
-                });
-                status = response.status;
-            }
-            if (status !== 200) {
-                throw new Error(`Failed to get workflow runs, expected 200 but received ${status}`);
-            }
-            const workflowRuns = response.data.workflow_runs.map(workflowRun => ({
-                id: workflowRun.id,
-                name: workflowRun.name || '',
-                htmlUrl: workflowRun.html_url
-            }));
-            core.debug(`
+                }
+                : {
+                    per_page: 10
+                })));
+            status = response.status;
+        }
+        else {
+            // repository_dipsatch can only be triggered from the default branch
+            const branchName = yield getDefaultBranch();
+            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+            response = yield octokit.rest.actions.listWorkflowRunsForRepo({
+                owner: config.owner,
+                repo: config.repo,
+                branch: branchName,
+                event: action_1.DispatchMethod.RepositoryDispatch,
+                per_page: 5
+            });
+            status = response.status;
+        }
+        if (status !== 200) {
+            throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`);
+        }
+        const workflowRuns = response.data.workflow_runs.map(workflowRun => ({
+            id: workflowRun.id,
+            name: workflowRun.name || '',
+            htmlUrl: workflowRun.html_url
+        }));
+        core.debug(`
 Fetched Workflow Runs
 Repository: ${config.owner}/${config.repo}
 Branch: ${branchName || 'undefined'}
 Runs Fetched: [${workflowRuns.map(workflowRun => workflowRun.id)}]`);
-            return workflowRuns;
-        }
-        catch (error) {
-            if (error instanceof Error) {
-                core.error(`getWorkflowRuns: An unexpected error has occurred: ${error.message}`);
-                error.stack && core.debug(error.stack);
-            }
-            throw error;
-        }
+        return workflowRuns;
     });
 }
 exports.getWorkflowRuns = getWorkflowRuns;
 function getDefaultBranch() {
     return __awaiter(this, void 0, void 0, function* () {
-        try {
-            const response = yield octokit.rest.repos.get({
-                owner: config.owner,
-                repo: config.repo
-            });
-            if (response.status !== 200) {
-                throw new Error(`Failed to get repository information, expected 200 but received ${response.status}`);
-            }
-            core.debug(`
+        const response = yield octokit.rest.repos.get({
+            owner: config.owner,
+            repo: config.repo
+        });
+        if (response.status !== 200) {
+            throw new Error(`getDefaultBranch: Failed to get repository information, expected 200 but received ${response.status}`);
+        }
+        core.debug(`
 Fetched Repository Information
 Repository: ${config.owner}/${config.repo}
 Default Branch: ${response.data.default_branch}`);
-            return response.data.default_branch;
-        }
-        catch (error) {
-            if (error instanceof Error) {
-                core.error(`getDefaultBranch: An unexpected error has occurred: ${error.message}`);
-                error.stack && core.debug(error.stack);
-            }
-            throw error;
-        }
+        return response.data.default_branch;
     });
 }
 exports.getDefaultBranch = getDefaultBranch;
-/**
- * Attempt to get a non-empty array from the API.
- */
-function retryOrDie(callback, timeoutMs) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const startTime = Date.now();
-        let elapsedTime = 0;
-        while (elapsedTime < timeoutMs) {
-            elapsedTime = Date.now() - startTime;
-            const response = yield callback();
-            if (response.length > 0) {
-                return response;
-            }
-            yield new Promise(resolve => setTimeout(resolve, 1000));
-        }
-        throw new Error('Timed out while attempting to fetch data');
-    });
-}
-exports.retryOrDie = retryOrDie;
 
 
 /***/ }),
@@ -501,19 +448,19 @@ const core = __importStar(__nccwpck_require__(2186));
 const uuid_1 = __nccwpck_require__(5840);
 const action_1 = __nccwpck_require__(9139);
 const api = __importStar(__nccwpck_require__(8947));
+const exponential_backoff_1 = __nccwpck_require__(3183);
+const utils_1 = __nccwpck_require__(918);
 const DISTINCT_ID = (0, uuid_1.v4)();
-const WORKFLOW_FETCH_TIMEOUT_MS = 60 * 1000;
-const WORKFLOW_JOB_STEPS_RETRY_MS = 5000;
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const config = (0, action_1.getConfig)();
-            const startTime = Date.now();
             api.init(config);
             // Get the workflow ID if give a string
             if (typeof config.workflow === 'string') {
-                core.info(`Fetching Workflow ID for ${config.workflow}...`);
-                const workflowId = yield api.getWorkflowId(config.workflow);
+                const workflowFileName = config.workflow;
+                core.info(`Fetching Workflow ID for ${workflowFileName}...`);
+                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }));
                 core.info(`Fetched Workflow ID: ${workflowId}`);
                 config.workflow = workflowId;
             }
@@ -529,31 +476,17 @@ function run() {
                 core.info('Workflow dispatched! Skipping the retrieval of the run-id');
                 return;
             }
-            const timeoutMs = config.discoverTimeoutSeconds * 1000;
-            let attemptNo = 0;
-            let elapsedTime = Date.now() - startTime;
-            core.info("Attempt to extract run ID from 'run-name'...");
-            while (elapsedTime < timeoutMs) {
-                attemptNo++;
-                elapsedTime = Date.now() - startTime;
-                core.debug(`Attempting to fetch Run IDs for workflow with distinct id [${DISTINCT_ID}]`);
-                // Get all runs for a given workflow ID
-                const workflowRuns = yield api.retryOrDie(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowRuns(); }), WORKFLOW_FETCH_TIMEOUT_MS > timeoutMs
-                    ? timeoutMs
-                    : WORKFLOW_FETCH_TIMEOUT_MS);
-                const dispatchedWorkflowRun = workflowRuns.find(workflowRun => new RegExp(DISTINCT_ID).test(workflowRun.name));
-                if (dispatchedWorkflowRun) {
-                    core.info('Successfully identified remote Run:\n' +
-                        `  Run ID: ${dispatchedWorkflowRun.id}\n` +
-                        `  URL: ${dispatchedWorkflowRun.htmlUrl}`);
-                    core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
-                    core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
-                    return;
-                }
-                core.info(`Exhausted searching IDs in known runs, attempt ${attemptNo}...`);
-                yield new Promise(resolve => setTimeout(resolve, WORKFLOW_JOB_STEPS_RETRY_MS));
-            }
-            throw new Error('Timeout exceeded while attempting to get Run ID');
+            core.debug(`Attempting to fetch Run IDs for workflow with distinct id [${DISTINCT_ID}]`);
+            const dispatchedWorkflowRun = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () {
+                const workflowRuns = yield api.getWorkflowRuns();
+                const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
+                return dispatchedWorkflowRun;
+            }));
+            core.info('Successfully identified remote Run:\n' +
+                `  Run ID: ${dispatchedWorkflowRun.id}\n` +
+                `  URL: ${dispatchedWorkflowRun.htmlUrl}`);
+            core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
+            core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
         }
         catch (error) {
             if (error instanceof Error) {
@@ -599,7 +532,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getBranchNameFromRef = void 0;
+exports.getDispatchedWorkflowRun = exports.getBranchNameFromRef = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 function getBranchNameFromHeadRef(ref) {
     const refItems = ref.split(/\/?refs\/heads\//);
@@ -635,6 +568,14 @@ function getBranchNameFromRef(ref) {
     return getBranchNameFromHeadRef(ref) || ref;
 }
 exports.getBranchNameFromRef = getBranchNameFromRef;
+function getDispatchedWorkflowRun(workflowRuns, distinctID) {
+    const dispatchedWorkflow = workflowRuns.find(workflowRun => new RegExp(distinctID).test(workflowRun.name));
+    if (dispatchedWorkflow) {
+        return dispatchedWorkflow;
+    }
+    throw new Error('getDispatchedWorkflowRun: Failed to find dispatched workflow');
+}
+exports.getDispatchedWorkflowRun = getDispatchedWorkflowRun;
 
 
 /***/ }),
@@ -5834,6 +5775,417 @@ class Deprecation extends Error {
 
 exports.Deprecation = Deprecation;
 
+
+/***/ }),
+
+/***/ 3183:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var options_1 = __nccwpck_require__(6666);
+var delay_factory_1 = __nccwpck_require__(8348);
+function backOff(request, options) {
+    if (options === void 0) { options = {}; }
+    return __awaiter(this, void 0, void 0, function () {
+        var sanitizedOptions, backOff;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    sanitizedOptions = options_1.getSanitizedOptions(options);
+                    backOff = new BackOff(request, sanitizedOptions);
+                    return [4 /*yield*/, backOff.execute()];
+                case 1: return [2 /*return*/, _a.sent()];
+            }
+        });
+    });
+}
+exports.backOff = backOff;
+var BackOff = /** @class */ (function () {
+    function BackOff(request, options) {
+        this.request = request;
+        this.options = options;
+        this.attemptNumber = 0;
+    }
+    BackOff.prototype.execute = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var e_1, shouldRetry;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        if (!!this.attemptLimitReached) return [3 /*break*/, 7];
+                        _a.label = 1;
+                    case 1:
+                        _a.trys.push([1, 4, , 6]);
+                        return [4 /*yield*/, this.applyDelay()];
+                    case 2:
+                        _a.sent();
+                        return [4 /*yield*/, this.request()];
+                    case 3: return [2 /*return*/, _a.sent()];
+                    case 4:
+                        e_1 = _a.sent();
+                        this.attemptNumber++;
+                        return [4 /*yield*/, this.options.retry(e_1, this.attemptNumber)];
+                    case 5:
+                        shouldRetry = _a.sent();
+                        if (!shouldRetry || this.attemptLimitReached) {
+                            throw e_1;
+                        }
+                        return [3 /*break*/, 6];
+                    case 6: return [3 /*break*/, 0];
+                    case 7: throw new Error("Something went wrong.");
+                }
+            });
+        });
+    };
+    Object.defineProperty(BackOff.prototype, "attemptLimitReached", {
+        get: function () {
+            return this.attemptNumber >= this.options.numOfAttempts;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    BackOff.prototype.applyDelay = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var delay;
+            return __generator(this, function (_a) {
+                switch (_a.label) {
+                    case 0:
+                        delay = delay_factory_1.DelayFactory(this.options, this.attemptNumber);
+                        return [4 /*yield*/, delay.apply()];
+                    case 1:
+                        _a.sent();
+                        return [2 /*return*/];
+                }
+            });
+        });
+    };
+    return BackOff;
+}());
+//# sourceMappingURL=backoff.js.map
+
+/***/ }),
+
+/***/ 5710:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var delay_base_1 = __nccwpck_require__(7741);
+var AlwaysDelay = /** @class */ (function (_super) {
+    __extends(AlwaysDelay, _super);
+    function AlwaysDelay() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    return AlwaysDelay;
+}(delay_base_1.Delay));
+exports.AlwaysDelay = AlwaysDelay;
+//# sourceMappingURL=always.delay.js.map
+
+/***/ }),
+
+/***/ 7741:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var jitter_factory_1 = __nccwpck_require__(5229);
+var Delay = /** @class */ (function () {
+    function Delay(options) {
+        this.options = options;
+        this.attempt = 0;
+    }
+    Delay.prototype.apply = function () {
+        var _this = this;
+        return new Promise(function (resolve) { return setTimeout(resolve, _this.jitteredDelay); });
+    };
+    Delay.prototype.setAttemptNumber = function (attempt) {
+        this.attempt = attempt;
+    };
+    Object.defineProperty(Delay.prototype, "jitteredDelay", {
+        get: function () {
+            var jitter = jitter_factory_1.JitterFactory(this.options);
+            return jitter(this.delay);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Delay.prototype, "delay", {
+        get: function () {
+            var constant = this.options.startingDelay;
+            var base = this.options.timeMultiple;
+            var power = this.numOfDelayedAttempts;
+            var delay = constant * Math.pow(base, power);
+            return Math.min(delay, this.options.maxDelay);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Delay.prototype, "numOfDelayedAttempts", {
+        get: function () {
+            return this.attempt;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return Delay;
+}());
+exports.Delay = Delay;
+//# sourceMappingURL=delay.base.js.map
+
+/***/ }),
+
+/***/ 8348:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var skip_first_delay_1 = __nccwpck_require__(4317);
+var always_delay_1 = __nccwpck_require__(5710);
+function DelayFactory(options, attempt) {
+    var delay = initDelayClass(options);
+    delay.setAttemptNumber(attempt);
+    return delay;
+}
+exports.DelayFactory = DelayFactory;
+function initDelayClass(options) {
+    if (!options.delayFirstAttempt) {
+        return new skip_first_delay_1.SkipFirstDelay(options);
+    }
+    return new always_delay_1.AlwaysDelay(options);
+}
+//# sourceMappingURL=delay.factory.js.map
+
+/***/ }),
+
+/***/ 4317:
+/***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
+
+"use strict";
+
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = function (d, b) {
+        extendStatics = Object.setPrototypeOf ||
+            ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+            function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+        return extendStatics(d, b);
+    };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var delay_base_1 = __nccwpck_require__(7741);
+var SkipFirstDelay = /** @class */ (function (_super) {
+    __extends(SkipFirstDelay, _super);
+    function SkipFirstDelay() {
+        return _super !== null && _super.apply(this, arguments) || this;
+    }
+    SkipFirstDelay.prototype.apply = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            return __generator(this, function (_a) {
+                return [2 /*return*/, this.isFirstAttempt ? true : _super.prototype.apply.call(this)];
+            });
+        });
+    };
+    Object.defineProperty(SkipFirstDelay.prototype, "isFirstAttempt", {
+        get: function () {
+            return this.attempt === 0;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(SkipFirstDelay.prototype, "numOfDelayedAttempts", {
+        get: function () {
+            return this.attempt - 1;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    return SkipFirstDelay;
+}(delay_base_1.Delay));
+exports.SkipFirstDelay = SkipFirstDelay;
+//# sourceMappingURL=skip-first.delay.js.map
+
+/***/ }),
+
+/***/ 8571:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+function fullJitter(delay) {
+    var jitteredDelay = Math.random() * delay;
+    return Math.round(jitteredDelay);
+}
+exports.fullJitter = fullJitter;
+//# sourceMappingURL=full.jitter.js.map
+
+/***/ }),
+
+/***/ 5229:
+/***/ ((__unused_webpack_module, exports, __nccwpck_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var full_jitter_1 = __nccwpck_require__(8571);
+var no_jitter_1 = __nccwpck_require__(2585);
+function JitterFactory(options) {
+    switch (options.jitter) {
+        case "full":
+            return full_jitter_1.fullJitter;
+        case "none":
+        default:
+            return no_jitter_1.noJitter;
+    }
+}
+exports.JitterFactory = JitterFactory;
+//# sourceMappingURL=jitter.factory.js.map
+
+/***/ }),
+
+/***/ 2585:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+function noJitter(delay) {
+    return delay;
+}
+exports.noJitter = noJitter;
+//# sourceMappingURL=no.jitter.js.map
+
+/***/ }),
+
+/***/ 6666:
+/***/ (function(__unused_webpack_module, exports) {
+
+"use strict";
+
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+var defaultOptions = {
+    delayFirstAttempt: false,
+    jitter: "none",
+    maxDelay: Infinity,
+    numOfAttempts: 10,
+    retry: function () { return true; },
+    startingDelay: 100,
+    timeMultiple: 2
+};
+function getSanitizedOptions(options) {
+    var sanitized = __assign(__assign({}, defaultOptions), options);
+    if (sanitized.numOfAttempts < 1) {
+        sanitized.numOfAttempts = 1;
+    }
+    return sanitized;
+}
+exports.getSanitizedOptions = getSanitizedOptions;
+//# sourceMappingURL=options.js.map
 
 /***/ }),
 

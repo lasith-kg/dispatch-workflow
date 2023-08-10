@@ -35,10 +35,6 @@ inputs:
     description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
     required: false
     default: 'false'
-  discover-timeout-seconds:
-    description: 'Time until giving up on the discovery of the dispatched workflow and corresponding Run ID.'
-    required: false
-    default: '30'
 runs:
   using: 'node16'
   main: 'dist/index.js'

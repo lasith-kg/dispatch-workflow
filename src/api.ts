@@ -101,161 +101,110 @@ Client Payload: ${JSON.stringify(clientPayload)}`)
 }
 
 export async function getWorkflowId(workflowFilename: string): Promise<number> {
-  try {
-    // https://docs.github.com/en/rest/reference/actions#list-repository-workflows
-    const response = await octokit.rest.actions.listRepoWorkflows({
-      owner: config.owner,
-      repo: config.repo
-    })
+  // https://docs.github.com/en/rest/reference/actions#list-repository-workflows
+  const response = await octokit.rest.actions.listRepoWorkflows({
+    owner: config.owner,
+    repo: config.repo
+  })
 
-    if (response.status !== 200) {
-      throw new Error(
-        `Failed to get workflows, expected 200 but received ${response.status}`
-      )
-    }
-
-    const workflowId = response.data.workflows.find(workflow =>
-      new RegExp(workflowFilename).test(workflow.path)
-    )?.id
-
-    if (workflowId === undefined) {
-      throw new Error(`Unable to find ID for Workflow: ${workflowFilename}`)
-    }
-
-    return workflowId
-  } catch (error) {
-    if (error instanceof Error) {
-      core.error(
-        `getWorkflowId: An unexpected error has occurred: ${error.message}`
-      )
-      error.stack && core.debug(error.stack)
-    }
-    throw error
+  if (response.status !== 200) {
+    throw new Error(
+      `Failed to get workflows, expected 200 but received ${response.status}`
+    )
   }
+
+  const workflow = response.data.workflows.find(workflow =>
+    new RegExp(workflowFilename).test(workflow.path)
+  )
+
+  if (!workflow) {
+    throw new Error(
+      `getWorkflowId: Unable to find ID for Workflow: ${workflowFilename}`
+    )
+  }
+
+  return workflow.id
 }
 
 export async function getWorkflowRuns(): Promise<WorkflowRun[]> {
-  try {
-    let status: number
-    let branchName: string | undefined
-    let response: WorkflowRunResponse
+  let status: number
+  let branchName: string | undefined
+  let response: WorkflowRunResponse
 
-    if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
-      branchName = getBranchNameFromRef(config.ref)
+  if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
+    branchName = getBranchNameFromRef(config.ref)
 
-      if (!config.workflow) {
-        throw new Error(`An input to 'workflow' was not provided`)
-      }
-      // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-      response = await octokit.rest.actions.listWorkflowRuns({
-        owner: config.owner,
-        repo: config.repo,
-        workflow_id: config.workflow,
-        ...(branchName
-          ? {
-              branch: branchName,
-              per_page: 5
-            }
-          : {
-              per_page: 10
-            })
-      })
-      status = response.status
-    } else {
-      // repository_dipsatch can only be triggered from the default branch
-      const branchName = await getDefaultBranch()
-      // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
-      response = await octokit.rest.actions.listWorkflowRunsForRepo({
-        owner: config.owner,
-        repo: config.repo,
-        branch: branchName,
-        event: DispatchMethod.RepositoryDispatch,
-        per_page: 5
-      })
-      status = response.status
+    if (!config.workflow) {
+      throw new Error(`An input to 'workflow' was not provided`)
     }
+    // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
+    response = await octokit.rest.actions.listWorkflowRuns({
+      owner: config.owner,
+      repo: config.repo,
+      workflow_id: config.workflow,
+      ...(branchName
+        ? {
+            branch: branchName,
+            per_page: 5
+          }
+        : {
+            per_page: 10
+          })
+    })
+    status = response.status
+  } else {
+    // repository_dipsatch can only be triggered from the default branch
+    const branchName = await getDefaultBranch()
+    // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+    response = await octokit.rest.actions.listWorkflowRunsForRepo({
+      owner: config.owner,
+      repo: config.repo,
+      branch: branchName,
+      event: DispatchMethod.RepositoryDispatch,
+      per_page: 5
+    })
+    status = response.status
+  }
 
-    if (status !== 200) {
-      throw new Error(
-        `Failed to get workflow runs, expected 200 but received ${status}`
-      )
-    }
-
-    const workflowRuns: WorkflowRun[] = response.data.workflow_runs.map(
-      workflowRun => ({
-        id: workflowRun.id,
-        name: workflowRun.name || '',
-        htmlUrl: workflowRun.html_url
-      })
+  if (status !== 200) {
+    throw new Error(
+      `getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`
     )
+  }
 
-    core.debug(`
+  const workflowRuns: WorkflowRun[] = response.data.workflow_runs.map(
+    workflowRun => ({
+      id: workflowRun.id,
+      name: workflowRun.name || '',
+      htmlUrl: workflowRun.html_url
+    })
+  )
+
+  core.debug(`
 Fetched Workflow Runs
 Repository: ${config.owner}/${config.repo}
 Branch: ${branchName || 'undefined'}
 Runs Fetched: [${workflowRuns.map(workflowRun => workflowRun.id)}]`)
 
-    return workflowRuns
-  } catch (error) {
-    if (error instanceof Error) {
-      core.error(
-        `getWorkflowRuns: An unexpected error has occurred: ${error.message}`
-      )
-      error.stack && core.debug(error.stack)
-    }
-    throw error
-  }
+  return workflowRuns
 }
 
 export async function getDefaultBranch(): Promise<string> {
-  try {
-    const response = await octokit.rest.repos.get({
-      owner: config.owner,
-      repo: config.repo
-    })
+  const response = await octokit.rest.repos.get({
+    owner: config.owner,
+    repo: config.repo
+  })
 
-    if (response.status !== 200) {
-      throw new Error(
-        `Failed to get repository information, expected 200 but received ${response.status}`
-      )
-    }
+  if (response.status !== 200) {
+    throw new Error(
+      `getDefaultBranch: Failed to get repository information, expected 200 but received ${response.status}`
+    )
+  }
 
-    core.debug(`
+  core.debug(`
 Fetched Repository Information
 Repository: ${config.owner}/${config.repo}
 Default Branch: ${response.data.default_branch}`)
 
-    return response.data.default_branch
-  } catch (error) {
-    if (error instanceof Error) {
-      core.error(
-        `getDefaultBranch: An unexpected error has occurred: ${error.message}`
-      )
-      error.stack && core.debug(error.stack)
-    }
-    throw error
-  }
-}
-
-/**
- * Attempt to get a non-empty array from the API.
- */
-export async function retryOrDie<T>(
-  callback: () => Promise<T[]>,
-  timeoutMs: number
-): Promise<T[]> {
-  const startTime = Date.now()
-  let elapsedTime = 0
-  while (elapsedTime < timeoutMs) {
-    elapsedTime = Date.now() - startTime
-
-    const response = await callback()
-    if (response.length > 0) {
-      return response
-    }
-
-    await new Promise<void>(resolve => setTimeout(resolve, 1000))
-  }
-
-  throw new Error('Timed out while attempting to fetch data')
+  return response.data.default_branch
 }

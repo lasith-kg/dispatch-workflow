@@ -36,8 +36,6 @@ describe('Action', () => {
             return mockEnvConfig.workflow
           case 'workflow-inputs':
             return mockEnvConfig.workflowInputs
-          case 'discover-timeout-seconds':
-            return mockEnvConfig.discoverTimeoutSeconds
           case 'token':
             return mockEnvConfig.token
           default:
@@ -89,7 +87,6 @@ describe('Action', () => {
         expect(config.ref).toStrictEqual('feature_branch')
         expect(config.workflow).toStrictEqual('workflow.yml')
         expect(config.workflowInputs).toStrictEqual(workflowInputs)
-        expect(config.discoverTimeoutSeconds).toStrictEqual(60)
         expect(config.token).toStrictEqual('token')
         expect(config.discover).toStrictEqual(false)
       })
@@ -160,7 +157,6 @@ describe('Action', () => {
         expect(config.ref).toBeUndefined()
         expect(config.workflow).toBeUndefined()
         expect(config.workflowInputs).toStrictEqual(workflowInputs)
-        expect(config.discoverTimeoutSeconds).toStrictEqual(60)
         expect(config.token).toStrictEqual('token')
         expect(config.discover).toStrictEqual(false)
       })
@@ -204,13 +200,6 @@ describe('Action', () => {
         mockEnvConfig.dispatchMethod = 'unsupported_dispatch_method'
 
         expect(() => getConfig()).toThrowError()
-      })
-
-      test('Should provide a default workflow timeout if none is supplied', () => {
-        mockEnvConfig.discoverTimeoutSeconds = ''
-        const config: ActionConfig = getConfig()
-
-        expect(config.discoverTimeoutSeconds).toStrictEqual(30)
       })
 
       test('Should return an empty client payload if none is supplied', () => {
