@@ -308,7 +308,7 @@ function getWorkflowId(workflowFilename) {
         if (response.status !== 200) {
             throw new Error(`Failed to get workflows, expected 200 but received ${response.status}`);
         }
-        const workflow = response.data.workflows.find(workflow => new RegExp(workflowFilename).test(workflow.path));
+        const workflow = response.data.workflows.find(workflow => workflow.path.includes(workflowFilename));
         if (!workflow) {
             throw new Error(`getWorkflowId: Unable to find ID for Workflow: ${workflowFilename}`);
         }
@@ -551,11 +551,13 @@ function getBranchNameFromRef(ref) {
 }
 exports.getBranchNameFromRef = getBranchNameFromRef;
 function getDispatchedWorkflowRun(workflowRuns, distinctID) {
-    const dispatchedWorkflow = workflowRuns.find(workflowRun => new RegExp(distinctID).test(workflowRun.name));
+    const dispatchedWorkflow = workflowRuns.find(workflowRun => workflowRun.name.includes(distinctID));
     if (dispatchedWorkflow) {
         return dispatchedWorkflow;
     }
-    throw new Error('getDispatchedWorkflowRun: Failed to find dispatched workflow');
+    throw new Error(`
+getDispatchedWorkflowRun: Failed to find dispatched workflow
+Distinct ID: ${distinctID}`);
 }
 exports.getDispatchedWorkflowRun = getDispatchedWorkflowRun;
 

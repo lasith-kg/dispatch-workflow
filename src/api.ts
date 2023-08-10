@@ -96,7 +96,7 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
   }
 
   const workflow = response.data.workflows.find(workflow =>
-    new RegExp(workflowFilename).test(workflow.path)
+    workflow.path.includes(workflowFilename)
   )
 
   if (!workflow) {
