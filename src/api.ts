@@ -16,88 +16,70 @@ export function init(cfg?: ActionConfig): void {
 }
 
 export async function workflowDispatch(distinctId: string): Promise<void> {
-  try {
-    const inputs = {
-      ...config.workflowInputs,
-      ...(config.discover ? {distinct_id: distinctId} : undefined)
-    }
-    if (!config.workflow) {
-      throw new Error(`An input to 'workflow' was not provided`)
-    }
-    if (!config.ref) {
-      throw new Error(`An input to 'ref' was not provided`)
-    }
-    // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-    const response = await octokit.rest.actions.createWorkflowDispatch({
-      owner: config.owner,
-      repo: config.repo,
-      workflow_id: config.workflow,
-      ref: config.ref,
-      inputs
-    })
+  const inputs = {
+    ...config.workflowInputs,
+    ...(config.discover ? {distinct_id: distinctId} : undefined)
+  }
+  if (!config.workflow) {
+    throw new Error(`workflowDispatch: An input to 'workflow' was not provided`)
+  }
+  if (!config.ref) {
+    throw new Error(`workflowDispatch: An input to 'ref' was not provided`)
+  }
+  // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+  const response = await octokit.rest.actions.createWorkflowDispatch({
+    owner: config.owner,
+    repo: config.repo,
+    workflow_id: config.workflow,
+    ref: config.ref,
+    inputs
+  })
 
-    if (response.status !== 204) {
-      throw new Error(
-        `Failed to dispatch action, expected 204 but received ${response.status}`
-      )
-    }
+  if (response.status !== 204) {
+    throw new Error(
+      `workflowDispatch: Failed to dispatch action, expected 204 but received ${response.status}`
+    )
+  }
 
-    core.info(`
+  core.info(`
 Successfully dispatched workflow using workflow_dispatch method:
 Repository: ${config.owner}/${config.repo}
 Branch: ${config.ref}
 Workflow ID: ${config.workflow}
 Distinct ID: ${distinctId}
 Workflow Inputs: ${JSON.stringify(inputs)}`)
-  } catch (error) {
-    if (error instanceof Error) {
-      core.error(
-        `workflowDispatch: An unexpected error has occurred: ${error.message}`
-      )
-      error.stack && core.debug(error.stack)
-    }
-    throw error
-  }
 }
 
 export async function repositoryDispatch(distinctId: string): Promise<void> {
-  try {
-    const clientPayload = {
-      ...config.workflowInputs,
-      ...(config.discover ? {distinct_id: distinctId} : undefined)
-    }
-    if (!config.eventType) {
-      throw new Error(`An input to 'event-type' was not provided`)
-    }
-    // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-    const response = await octokit.rest.repos.createDispatchEvent({
-      owner: config.owner,
-      repo: config.repo,
-      event_type: config.eventType,
-      client_payload: clientPayload
-    })
+  const clientPayload = {
+    ...config.workflowInputs,
+    ...(config.discover ? {distinct_id: distinctId} : undefined)
+  }
+  if (!config.eventType) {
+    throw new Error(
+      `repositoryDispatch: An input to 'event-type' was not provided`
+    )
+  }
+  // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+  const response = await octokit.rest.repos.createDispatchEvent({
+    owner: config.owner,
+    repo: config.repo,
+    event_type: config.eventType,
+    client_payload: clientPayload
+  })
 
-    if (response.status !== 204) {
-      throw new Error(
-        `Failed to dispatch action, expected 204 but received ${response.status}`
-      )
-    }
+  if (response.status !== 204) {
+    throw new Error(
+      `repositoryDispatch: Failed to dispatch action, expected 204 but received ${response.status}`
+    )
+  }
 
-    core.info(`
+  core.info(`
 Successfully dispatched workflow using repository_dispatch method:
 Repository: ${config.owner}/${config.repo}
 Event Type: ${config.eventType}
 Distinct ID: ${distinctId}
 Client Payload: ${JSON.stringify(clientPayload)}`)
-  } catch (error) {
-    if (error instanceof Error) {
-      core.error(
-        `repositoryDispatch: An unexpected error has occurred: ${error.message}`
-      )
-      error.stack && core.debug(error.stack)
-    }
-    throw error
-  }
 }
 
 export async function getWorkflowId(workflowFilename: string): Promise<number> {
