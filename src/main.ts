@@ -7,6 +7,11 @@ import {getDispatchedWorkflowRun} from './utils'
 
 const DISTINCT_ID = uuid()
 
+enum NumberOfAttempts {
+  WorkflowId = 3,
+  WorkflowRuns = 5
+}
+
 async function run(): Promise<void> {
   try {
     const config = getConfig()
@@ -16,8 +21,9 @@ async function run(): Promise<void> {
     if (typeof config.workflow === 'string') {
       const workflowFileName = config.workflow
       core.info(`Fetching Workflow ID for ${workflowFileName}...`)
-      const workflowId = await backOff(async () =>
-        api.getWorkflowId(workflowFileName)
+      const workflowId = await backOff(
+        async () => api.getWorkflowId(workflowFileName),
+        {numOfAttempts: NumberOfAttempts.WorkflowId}
       )
       core.info(`Fetched Workflow ID: ${workflowId}`)
       config.workflow = workflowId
@@ -40,14 +46,17 @@ async function run(): Promise<void> {
       `Attempting to fetch Run IDs for workflow with distinct id [${DISTINCT_ID}]`
     )
 
-    const dispatchedWorkflowRun = await backOff(async () => {
-      const workflowRuns = await api.getWorkflowRuns()
-      const dispatchedWorkflowRun = getDispatchedWorkflowRun(
-        workflowRuns,
-        DISTINCT_ID
-      )
-      return dispatchedWorkflowRun
-    })
+    const dispatchedWorkflowRun = await backOff(
+      async () => {
+        const workflowRuns = await api.getWorkflowRuns()
+        const dispatchedWorkflowRun = getDispatchedWorkflowRun(
+          workflowRuns,
+          DISTINCT_ID
+        )
+        return dispatchedWorkflowRun
+      },
+      {numOfAttempts: NumberOfAttempts.WorkflowRuns}
+    )
 
     core.info(
       'Successfully identified remote Run:\n' +
