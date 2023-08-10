@@ -58,10 +58,9 @@ async function run(): Promise<void> {
     core.setOutput(ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl)
   } catch (error) {
     if (error instanceof Error) {
-      core.error(`Failed to complete: ${error.message}`)
       core.warning('Does the token have the correct permissions?')
       error.stack && core.debug(error.stack)
-      core.setFailed(error.message)
+      core.setFailed(`Failed to complete:: ${error.message}`)
     }
   }
 }
