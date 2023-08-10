@@ -77,10 +77,7 @@ Expected Type: string
         return parsedWorkflowInputs;
     }
     catch (error) {
-        core.error('Failed to parse workflow_inputs JSON');
-        if (error instanceof Error) {
-            error.stack && core.debug(error.stack);
-        }
+        core.error('Failed to parse input: workflow_inputs');
         throw error;
     }
 }
@@ -98,10 +95,7 @@ Current Value: ${dispatchMethod}
         }
     }
     catch (error) {
-        core.error(`Failed to parse dispatch-method`);
-        if (error instanceof Error) {
-            error.stack && core.debug(error.stack);
-        }
+        core.error(`Failed to parse input: dispatch-method`);
         throw error;
     }
 }
@@ -121,10 +115,7 @@ Can be formatted as 'main' or 'refs/heads/main'`);
         }
     }
     catch (error) {
-        core.error(`Failed to parse ref`);
-        if (error instanceof Error) {
-            error.stack && core.debug(error.stack);
-        }
+        core.error(`Failed to parse input: ref`);
         throw error;
     }
     return ref || undefined;
@@ -142,10 +133,7 @@ The 'event-type' input is not supported for the workflow_dispatch method and mus
         }
     }
     catch (error) {
-        core.error(`Failed to parse event-type`);
-        if (error instanceof Error) {
-            error.stack && core.debug(error.stack);
-        }
+        core.error(`Failed to parse input: event-type`);
         throw error;
     }
     return eventType || undefined;
@@ -163,7 +151,7 @@ The 'workflow' input is not supported for the repository_dispatch method and mus
         }
     }
     catch (error) {
-        core.error(`Failed to parse workflow`);
+        core.error(`Failed to parse input: workflow`);
         if (error instanceof Error) {
             error.stack && core.debug(error.stack);
         }
@@ -472,10 +460,9 @@ function run() {
         }
         catch (error) {
             if (error instanceof Error) {
-                core.error(`Failed to complete: ${error.message}`);
                 core.warning('Does the token have the correct permissions?');
                 error.stack && core.debug(error.stack);
-                core.setFailed(error.message);
+                core.setFailed(`Failed to complete: ${error.message}`);
             }
         }
     });

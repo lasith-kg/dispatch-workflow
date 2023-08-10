@@ -106,10 +106,7 @@ Expected Type: string
     }
     return parsedWorkflowInputs
   } catch (error) {
-    core.error('Failed to parse workflow_inputs JSON')
-    if (error instanceof Error) {
-      error.stack && core.debug(error.stack)
-    }
+    core.error('Failed to parse input: workflow_inputs')
     throw error
   }
 }
@@ -128,10 +125,7 @@ Current Value: ${dispatchMethod}
 `)
     }
   } catch (error) {
-    core.error(`Failed to parse dispatch-method`)
-    if (error instanceof Error) {
-      error.stack && core.debug(error.stack)
-    }
+    core.error(`Failed to parse input: dispatch-method`)
     throw error
   }
 }
@@ -151,10 +145,7 @@ A valid git reference must be provided to the 'ref' input, if using the workflow
 Can be formatted as 'main' or 'refs/heads/main'`)
     }
   } catch (error) {
-    core.error(`Failed to parse ref`)
-    if (error instanceof Error) {
-      error.stack && core.debug(error.stack)
-    }
+    core.error(`Failed to parse input: ref`)
     throw error
   }
 
@@ -173,10 +164,7 @@ An event-type must be provided to the 'event-type' input, if using the repositor
 The 'event-type' input is not supported for the workflow_dispatch method and must be ignored.`)
     }
   } catch (error) {
-    core.error(`Failed to parse event-type`)
-    if (error instanceof Error) {
-      error.stack && core.debug(error.stack)
-    }
+    core.error(`Failed to parse input: event-type`)
     throw error
   }
 
@@ -198,7 +186,7 @@ A workflow file name or ID must be provided to the 'workflow' input, if using th
 The 'workflow' input is not supported for the repository_dispatch method and must be ignored.`)
     }
   } catch (error) {
-    core.error(`Failed to parse workflow`)
+    core.error(`Failed to parse input: workflow`)
     if (error instanceof Error) {
       error.stack && core.debug(error.stack)
     }
