@@ -8,7 +8,6 @@ import {
   init,
   repositoryDispatch,
   getDefaultBranch,
-  retryOrDie,
   getWorkflowRuns
 } from './api'
 import {ActionConfig, DispatchMethod} from './action'
@@ -63,7 +62,6 @@ describe('API', () => {
       ref: 'feature_branch',
       workflow: 'workflow.yml',
       workflowInputs,
-      discoverTimeoutSeconds: 60,
       token: 'token',
       discover: true
     }
@@ -501,34 +499,6 @@ describe('API', () => {
           `Failed to get workflow runs, expected 200 but received ${errorStatus}`
         )
       })
-    })
-  })
-
-  describe('retryOrDie', () => {
-    // A generic wait function that returns an array after an arbituary amount of time
-    const wait = async (delay: number, value: string[]): Promise<string[]> => {
-      return new Promise(resolve => setTimeout(resolve, delay, value))
-    }
-
-    /**
-     * Number.MIN_VALUE is the value closest to 0. Any positive number below
-     * Number.MIN_VALUE gets converted to 0 by the Javascript runtime
-     * This value is useful so that we can force the retryOrDie loop with a minimal timeout
-     */
-
-    it('should return a valid response before the timeout', async () => {
-      const data = ['placeholder']
-      const response = await retryOrDie<string>(
-        async () => wait(0, data),
-        Number.MIN_VALUE
-      )
-      expect(response).toStrictEqual(data)
-    })
-
-    it('should throw if timeout is exceeded', async () => {
-      await expect(
-        retryOrDie<string>(async () => wait(0, []), Number.MIN_VALUE)
-      ).rejects.toThrowError()
     })
   })
 })
