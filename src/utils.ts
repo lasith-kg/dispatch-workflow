@@ -44,12 +44,12 @@ export function getDispatchedWorkflowRun(
   distinctID: string
 ): WorkflowRun {
   const dispatchedWorkflow = workflowRuns.find(workflowRun =>
-    new RegExp(distinctID).test(workflowRun.name)
+    workflowRun.name.includes(distinctID)
   )
   if (dispatchedWorkflow) {
     return dispatchedWorkflow
   }
-  throw new Error(
-    'getDispatchedWorkflowRun: Failed to find dispatched workflow'
-  )
+  throw new Error(`
+getDispatchedWorkflowRun: Failed to find dispatched workflow
+Distinct ID: ${distinctID}`)
 }
