@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - run: |
           npm install
       - run: |
@@ -28,7 +28,7 @@ jobs:
       INTEGRATION_TEST_WORKFLOW_FILE: "integration-tests.yml"
       INTEGRATION_TEST_WORKFLOW_ID: 64701969 # This ID Will Change On Fork
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: ./
         id: fail-ref-workflow-dispatch
         name: "Dispatch Workflow using workflow_dispatch Method, to a Non-existent Branch"
