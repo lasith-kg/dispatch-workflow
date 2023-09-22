@@ -3,7 +3,7 @@
   "version": "1.6.0",
   "private": true,
   "description": "A GitHub action to dispatch a remote GitHub workflow and optionally retrieve its information",
-  "main": "lib/main.js",
+  "main": "lib/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write '**/*.ts'",
