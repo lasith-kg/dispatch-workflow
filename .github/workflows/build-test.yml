@@ -6,21 +6,9 @@ on: # rebuild any PRs and main branch changes
     branches:
       - "main"
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-          npm install
-      - run: |
-          npm run all
-  
+jobs:  
   integration-tests:
     runs-on: ubuntu-latest
-    if: >
-      github.event.repository.default_branch == github.ref_name
-        || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write
       actions: write
@@ -29,6 +17,10 @@ jobs:
       INTEGRATION_TEST_WORKFLOW_ID: 64701969 # This ID Will Change On Fork
     steps:
       - uses: actions/checkout@v4
+      - run: |
+          npm install
+      - run: |
+          npm run all
       - uses: ./
         id: fail-ref-workflow-dispatch
         name: "Dispatch Workflow using workflow_dispatch Method, to a Non-existent Branch"
