@@ -30,18 +30,12 @@ var __importStar = (this && this.__importStar) || function (mod) {
     return result;
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getConfig = exports.ActionOutputs = exports.DispatchMethod = void 0;
+exports.getConfig = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-var DispatchMethod;
-(function (DispatchMethod) {
-    DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
-    DispatchMethod["WorkflowDispatch"] = "workflow_dispatch";
-})(DispatchMethod || (exports.DispatchMethod = DispatchMethod = {}));
-var ActionOutputs;
-(function (ActionOutputs) {
-    ActionOutputs["RunId"] = "run-id";
-    ActionOutputs["RunUrl"] = "run-url";
-})(ActionOutputs || (exports.ActionOutputs = ActionOutputs = {}));
+const action_types_1 = __nccwpck_require__(1291);
+/**
+ * action.yml definition.
+ */
 function getNumberFromValue(value) {
     try {
         const num = parseInt(value);
@@ -61,7 +55,7 @@ function getWorkflowInputs(dispatchMethod) {
     }
     try {
         const parsedWorkflowInputs = JSON.parse(workflowInputs);
-        if (dispatchMethod === DispatchMethod.RepositoryDispatch) {
+        if (dispatchMethod === action_types_1.DispatchMethod.RepositoryDispatch) {
             return parsedWorkflowInputs;
         }
         for (const key in parsedWorkflowInputs) {
@@ -84,12 +78,12 @@ Expected Type: string
 function getDispatchMethod() {
     const dispatchMethod = core.getInput('dispatch-method', { required: true });
     try {
-        if (Object.values(DispatchMethod).includes(dispatchMethod)) {
+        if (Object.values(action_types_1.DispatchMethod).includes(dispatchMethod)) {
             return dispatchMethod;
         }
         else {
             throw new Error(`
-Allowed Values: [${Object.values(DispatchMethod).join(', ')}]
+Allowed Values: [${Object.values(action_types_1.DispatchMethod).join(', ')}]
 Current Value: ${dispatchMethod}
 `);
         }
@@ -102,13 +96,13 @@ Current Value: ${dispatchMethod}
 function getRef(dispatchMethod) {
     const ref = core.getInput('ref');
     try {
-        if (dispatchMethod === DispatchMethod.RepositoryDispatch && !!ref) {
+        if (dispatchMethod === action_types_1.DispatchMethod.RepositoryDispatch && !!ref) {
             throw new Error(`
 Currently the repository_dispatch method only supports dispatching workflows
 from the default branch. Therefore, the 'ref' input is not supported and must be ignored.
 The workflow_dispatch method supports dispatching workflows from non-default branches`);
         }
-        if (dispatchMethod === DispatchMethod.WorkflowDispatch && !ref) {
+        if (dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch && !ref) {
             throw new Error(`
 A valid git reference must be provided to the 'ref' input, if using the workflow_dispatch method.
 Can be formatted as 'main' or 'refs/heads/main'`);
@@ -123,11 +117,11 @@ Can be formatted as 'main' or 'refs/heads/main'`);
 function getEventType(dispatchMethod) {
     const eventType = core.getInput('event-type');
     try {
-        if (dispatchMethod === DispatchMethod.RepositoryDispatch && !eventType) {
+        if (dispatchMethod === action_types_1.DispatchMethod.RepositoryDispatch && !eventType) {
             throw new Error(`
 An event-type must be provided to the 'event-type' input, if using the repository_dispatch method.`);
         }
-        if (dispatchMethod === DispatchMethod.WorkflowDispatch && !!eventType) {
+        if (dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch && !!eventType) {
             throw new Error(`
 The 'event-type' input is not supported for the workflow_dispatch method and must be ignored.`);
         }
@@ -141,11 +135,11 @@ The 'event-type' input is not supported for the workflow_dispatch method and mus
 function getWorkflow(dispatchMethod) {
     const workflow = core.getInput('workflow');
     try {
-        if (dispatchMethod === DispatchMethod.WorkflowDispatch && !workflow) {
+        if (dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch && !workflow) {
             throw new Error(`
 A workflow file name or ID must be provided to the 'workflow' input, if using the workflow_dispatch method`);
         }
-        if (dispatchMethod === DispatchMethod.RepositoryDispatch && !!workflow) {
+        if (dispatchMethod === action_types_1.DispatchMethod.RepositoryDispatch && !!workflow) {
             throw new Error(`
 The 'workflow' input is not supported for the repository_dispatch method and must be ignored.`);
         }
@@ -157,7 +151,7 @@ The 'workflow' input is not supported for the repository_dispatch method and mus
         }
         throw error;
     }
-    if (dispatchMethod === DispatchMethod.WorkflowDispatch) {
+    if (dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch) {
         return getNumberFromValue(workflow) || workflow;
     }
     return undefined;
@@ -177,6 +171,27 @@ function getConfig() {
     };
 }
 exports.getConfig = getConfig;
+
+
+/***/ }),
+
+/***/ 1291:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ActionOutputs = exports.DispatchMethod = void 0;
+var DispatchMethod;
+(function (DispatchMethod) {
+    DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
+    DispatchMethod["WorkflowDispatch"] = "workflow_dispatch";
+})(DispatchMethod || (exports.DispatchMethod = DispatchMethod = {}));
+var ActionOutputs;
+(function (ActionOutputs) {
+    ActionOutputs["RunId"] = "run-id";
+    ActionOutputs["RunUrl"] = "run-url";
+})(ActionOutputs || (exports.ActionOutputs = ActionOutputs = {}));
 
 
 /***/ }),
@@ -223,6 +238,7 @@ exports.getDefaultBranch = exports.getWorkflowRuns = exports.getWorkflowId = exp
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const action_1 = __nccwpck_require__(9139);
+const action_types_1 = __nccwpck_require__(1291);
 const utils_1 = __nccwpck_require__(918);
 let config;
 let octokit;
@@ -309,7 +325,7 @@ function getWorkflowRuns() {
         let status;
         let branchName;
         let response;
-        if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+        if (config.dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch) {
             branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
             if (!config.workflow) {
                 throw new Error(`An input to 'workflow' was not provided`);
@@ -333,7 +349,7 @@ function getWorkflowRuns() {
                 owner: config.owner,
                 repo: config.repo,
                 branch: branchName,
-                event: action_1.DispatchMethod.RepositoryDispatch,
+                event: action_types_1.DispatchMethod.RepositoryDispatch,
                 per_page: 5
             });
             status = response.status;
@@ -415,10 +431,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
-const uuid_1 = __nccwpck_require__(5840);
-const action_1 = __nccwpck_require__(9139);
-const api = __importStar(__nccwpck_require__(8947));
 const exponential_backoff_1 = __nccwpck_require__(3183);
+const uuid_1 = __nccwpck_require__(5840);
+const main_types_1 = __nccwpck_require__(7435);
+const action_1 = __nccwpck_require__(9139);
+const action_types_1 = __nccwpck_require__(1291);
+const api = __importStar(__nccwpck_require__(8947));
 const utils_1 = __nccwpck_require__(918);
 const DISTINCT_ID = (0, uuid_1.v4)();
 function run() {
@@ -430,12 +448,12 @@ function run() {
             if (typeof config.workflow === 'string') {
                 const workflowFileName = config.workflow;
                 core.info(`Fetching Workflow ID for ${workflowFileName}...`);
-                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }));
+                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }), { numOfAttempts: main_types_1.NumberOfAttempts.WorkflowId });
                 core.info(`Fetched Workflow ID: ${workflowId}`);
                 config.workflow = workflowId;
             }
             // Dispatch the action using the chosen dispatch method
-            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+            if (config.dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch) {
                 yield api.workflowDispatch(DISTINCT_ID);
             }
             else {
@@ -451,12 +469,12 @@ function run() {
                 const workflowRuns = yield api.getWorkflowRuns();
                 const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
                 return dispatchedWorkflowRun;
-            }));
+            }), { numOfAttempts: main_types_1.NumberOfAttempts.WorkflowRuns });
             core.info('Successfully identified remote Run:\n' +
                 `  Run ID: ${dispatchedWorkflowRun.id}\n` +
                 `  URL: ${dispatchedWorkflowRun.htmlUrl}`);
-            core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
-            core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
+            core.setOutput(action_types_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
+            core.setOutput(action_types_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
         }
         catch (error) {
             if (error instanceof Error) {
@@ -468,6 +486,22 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 7435:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NumberOfAttempts = void 0;
+var NumberOfAttempts;
+(function (NumberOfAttempts) {
+    NumberOfAttempts[NumberOfAttempts["WorkflowId"] = 3] = "WorkflowId";
+    NumberOfAttempts[NumberOfAttempts["WorkflowRuns"] = 5] = "WorkflowRuns";
+})(NumberOfAttempts || (exports.NumberOfAttempts = NumberOfAttempts = {}));
 
 
 /***/ }),
@@ -1108,7 +1142,7 @@ class OidcClient {
                 .catch(error => {
                 throw new Error(`Failed to get ID Token. \n 
         Error Code : ${error.statusCode}\n 
-        Error Message: ${error.result.message}`);
+        Error Message: ${error.message}`);
             });
             const id_token = (_a = res.result) === null || _a === void 0 ? void 0 : _a.value;
             if (!id_token) {
@@ -8870,7 +8904,7 @@ for (let i = 0; i < 256; ++i) {
 function unsafeStringify(arr, offset = 0) {
   // Note: Be careful editing this code!  It's been tuned for performance
   // and works in ways you may not expect. See https://github.com/uuidjs/uuid/pull/434
-  return (byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + '-' + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + '-' + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + '-' + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + '-' + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]]).toLowerCase();
+  return byteToHex[arr[offset + 0]] + byteToHex[arr[offset + 1]] + byteToHex[arr[offset + 2]] + byteToHex[arr[offset + 3]] + '-' + byteToHex[arr[offset + 4]] + byteToHex[arr[offset + 5]] + '-' + byteToHex[arr[offset + 6]] + byteToHex[arr[offset + 7]] + '-' + byteToHex[arr[offset + 8]] + byteToHex[arr[offset + 9]] + '-' + byteToHex[arr[offset + 10]] + byteToHex[arr[offset + 11]] + byteToHex[arr[offset + 12]] + byteToHex[arr[offset + 13]] + byteToHex[arr[offset + 14]] + byteToHex[arr[offset + 15]];
 }
 
 function stringify(arr, offset = 0) {

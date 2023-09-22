@@ -1,11 +1,9 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import type {GitHub} from '@actions/github/lib/utils'
-import {ActionConfig, DispatchMethod, getConfig} from './action'
+import {getConfig} from './action'
+import {ActionConfig, DispatchMethod} from './action.types'
 import {getBranchNameFromRef} from './utils'
-import {WorkflowRun, WorkflowRunResponse} from './api.types'
-
-type Octokit = InstanceType<typeof GitHub>
+import {Octokit, WorkflowRun, WorkflowRunResponse} from './api.types'
 
 let config: ActionConfig
 let octokit: Octokit

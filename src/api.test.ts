@@ -10,7 +10,7 @@ import {
   getDefaultBranch,
   getWorkflowRuns
 } from './api'
-import {ActionConfig, DispatchMethod} from './action'
+import {ActionConfig, DispatchMethod} from './action.types'
 
 jest.mock('@actions/core')
 
