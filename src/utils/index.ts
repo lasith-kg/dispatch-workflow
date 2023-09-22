@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {WorkflowRun} from './api.types'
+import {WorkflowRun} from '../api'
 
 function getBranchNameFromHeadRef(ref: string): string | undefined {
   const refItems = ref.split(/\/?refs\/heads\//)

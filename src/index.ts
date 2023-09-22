@@ -1,11 +1,14 @@
 import * as core from '@actions/core'
 import {backOff} from 'exponential-backoff'
 import {v4 as uuid} from 'uuid'
-import {NumberOfAttempts} from './main.types'
-import {getConfig} from './action'
-import {DispatchMethod, ActionOutputs} from './action.types'
+import {getConfig, DispatchMethod, ActionOutputs} from './action'
 import * as api from './api'
 import {getDispatchedWorkflowRun} from './utils'
+
+export enum NumberOfAttempts {
+  WorkflowId = 3,
+  WorkflowRuns = 5
+}
 
 const DISTINCT_ID = uuid()
 

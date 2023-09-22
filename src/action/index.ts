@@ -5,9 +5,6 @@ import {
   DispatchMethod
 } from './action.types'
 
-/**
- * action.yml definition.
- */
 function getNumberFromValue(value: string): number | undefined {
   try {
     const num = parseInt(value)
@@ -155,3 +152,5 @@ export function getConfig(): ActionConfig {
     discover: core.getBooleanInput('discover')
   }
 }
+
+export * from './action.types'

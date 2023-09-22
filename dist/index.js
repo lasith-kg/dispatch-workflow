@@ -392,7 +392,7 @@ exports.getDefaultBranch = getDefaultBranch;
 
 /***/ }),
 
-/***/ 3109:
+/***/ 4822:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -430,14 +430,18 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.NumberOfAttempts = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const exponential_backoff_1 = __nccwpck_require__(3183);
 const uuid_1 = __nccwpck_require__(5840);
-const main_types_1 = __nccwpck_require__(7435);
 const action_1 = __nccwpck_require__(9139);
-const action_types_1 = __nccwpck_require__(1291);
 const api = __importStar(__nccwpck_require__(8947));
 const utils_1 = __nccwpck_require__(918);
+var NumberOfAttempts;
+(function (NumberOfAttempts) {
+    NumberOfAttempts[NumberOfAttempts["WorkflowId"] = 3] = "WorkflowId";
+    NumberOfAttempts[NumberOfAttempts["WorkflowRuns"] = 5] = "WorkflowRuns";
+})(NumberOfAttempts || (exports.NumberOfAttempts = NumberOfAttempts = {}));
 const DISTINCT_ID = (0, uuid_1.v4)();
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -448,12 +452,12 @@ function run() {
             if (typeof config.workflow === 'string') {
                 const workflowFileName = config.workflow;
                 core.info(`Fetching Workflow ID for ${workflowFileName}...`);
-                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }), { numOfAttempts: main_types_1.NumberOfAttempts.WorkflowId });
+                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }), { numOfAttempts: NumberOfAttempts.WorkflowId });
                 core.info(`Fetched Workflow ID: ${workflowId}`);
                 config.workflow = workflowId;
             }
             // Dispatch the action using the chosen dispatch method
-            if (config.dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch) {
+            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
                 yield api.workflowDispatch(DISTINCT_ID);
             }
             else {
@@ -469,12 +473,12 @@ function run() {
                 const workflowRuns = yield api.getWorkflowRuns();
                 const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
                 return dispatchedWorkflowRun;
-            }), { numOfAttempts: main_types_1.NumberOfAttempts.WorkflowRuns });
+            }), { numOfAttempts: NumberOfAttempts.WorkflowRuns });
             core.info('Successfully identified remote Run:\n' +
                 `  Run ID: ${dispatchedWorkflowRun.id}\n` +
                 `  URL: ${dispatchedWorkflowRun.htmlUrl}`);
-            core.setOutput(action_types_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
-            core.setOutput(action_types_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
+            core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
+            core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
         }
         catch (error) {
             if (error instanceof Error) {
@@ -486,22 +490,6 @@ function run() {
     });
 }
 run();
-
-
-/***/ }),
-
-/***/ 7435:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.NumberOfAttempts = void 0;
-var NumberOfAttempts;
-(function (NumberOfAttempts) {
-    NumberOfAttempts[NumberOfAttempts["WorkflowId"] = 3] = "WorkflowId";
-    NumberOfAttempts[NumberOfAttempts["WorkflowRuns"] = 5] = "WorkflowRuns";
-})(NumberOfAttempts || (exports.NumberOfAttempts = NumberOfAttempts = {}));
 
 
 /***/ }),
@@ -11454,7 +11442,7 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
 /******/ 	// This entry module is referenced by other modules so it can't be inlined
-/******/ 	var __webpack_exports__ = __nccwpck_require__(3109);
+/******/ 	var __webpack_exports__ = __nccwpck_require__(4822);
 /******/ 	module.exports = __webpack_exports__;
 /******/ 	
 /******/ })()

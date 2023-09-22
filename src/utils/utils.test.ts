@@ -1,7 +1,7 @@
 import {describe, expect, it, jest} from '@jest/globals'
-import {getBranchNameFromRef, getDispatchedWorkflowRun} from './utils'
+import {getBranchNameFromRef, getDispatchedWorkflowRun} from '.'
 import {v4 as uuid} from 'uuid'
-import {WorkflowRun} from './api.types'
+import {WorkflowRun} from '../api'
 
 jest.mock('@actions/core')
 

@@ -7,7 +7,7 @@ import {
   beforeEach,
   afterEach
 } from '@jest/globals'
-import {getConfig} from './action'
+import {getConfig} from '.'
 import {ActionConfig, DispatchMethod} from './action.types'
 
 jest.mock('@actions/core')
