@@ -1,8 +1,7 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {getConfig} from './action'
-import {ActionConfig, DispatchMethod} from './action.types'
-import {getBranchNameFromRef} from './utils'
+import {getConfig, ActionConfig, DispatchMethod} from '../action'
+import {getBranchNameFromRef} from '../utils'
 import {Octokit, WorkflowRun, WorkflowRunResponse} from './api.types'
 
 let config: ActionConfig
@@ -188,3 +187,5 @@ Default Branch: ${response.data.default_branch}`)
 
   return response.data.default_branch
 }
+
+export * from './api.types'

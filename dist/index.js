@@ -435,7 +435,6 @@ const exponential_backoff_1 = __nccwpck_require__(3183);
 const uuid_1 = __nccwpck_require__(5840);
 const main_types_1 = __nccwpck_require__(7435);
 const action_1 = __nccwpck_require__(9139);
-const action_types_1 = __nccwpck_require__(1291);
 const api = __importStar(__nccwpck_require__(8947));
 const utils_1 = __nccwpck_require__(918);
 const DISTINCT_ID = (0, uuid_1.v4)();
@@ -453,7 +452,7 @@ function run() {
                 config.workflow = workflowId;
             }
             // Dispatch the action using the chosen dispatch method
-            if (config.dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch) {
+            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
                 yield api.workflowDispatch(DISTINCT_ID);
             }
             else {
@@ -473,8 +472,8 @@ function run() {
             core.info('Successfully identified remote Run:\n' +
                 `  Run ID: ${dispatchedWorkflowRun.id}\n` +
                 `  URL: ${dispatchedWorkflowRun.htmlUrl}`);
-            core.setOutput(action_types_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
-            core.setOutput(action_types_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
+            core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
+            core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
         }
         catch (error) {
             if (error instanceof Error) {
