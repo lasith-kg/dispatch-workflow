@@ -26,6 +26,12 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "${{ steps.nvmrc.outputs.node-version }}"
+      - id: clean-dist
+        shell: bash
+        run: |
+          # Clean the existing dist/ folder so that we only test fresh
+          # compiled code
+          rm -rf dist/
       - run: |
           npm ci
       - run: |

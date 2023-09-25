@@ -35,19 +35,16 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "${{ steps.nvmrc.outputs.node-version }}"
+      - id: clean-dist
+        shell: bash
+        run: |
+          # Clean the existing dist/ folder so that we only release fresh
+          # compiled code
+          rm -rf dist/
       - run: |
           npm ci
       - run: |
           npm run all
-        # We need to make sure the checked-in `index.js` actually matches what we expect it to be.
-      - name: Compare the Expected and Actual dist/ Directories
-        run: |
-          if [ "$(git diff --ignore-space-at-eol dist/ | wc -l)" -gt "0" ]; then
-            echo "Detected uncommitted changes after build.  See status below:"
-            git diff
-            exit 1
-          fi
-        id: diff
       - name: Perform Release
         run: |
           npm run release -- \
