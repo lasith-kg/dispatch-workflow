@@ -1,7 +1,28 @@
 require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 9139:
+/***/ 313:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.ActionOutputs = exports.DispatchMethod = void 0;
+var DispatchMethod;
+(function (DispatchMethod) {
+    DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
+    DispatchMethod["WorkflowDispatch"] = "workflow_dispatch";
+})(DispatchMethod || (exports.DispatchMethod = DispatchMethod = {}));
+var ActionOutputs;
+(function (ActionOutputs) {
+    ActionOutputs["RunId"] = "run-id";
+    ActionOutputs["RunUrl"] = "run-url";
+})(ActionOutputs || (exports.ActionOutputs = ActionOutputs = {}));
+
+
+/***/ }),
+
+/***/ 6791:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -29,13 +50,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getConfig = void 0;
 const core = __importStar(__nccwpck_require__(2186));
-const action_types_1 = __nccwpck_require__(1291);
-/**
- * action.yml definition.
- */
+const action_types_1 = __nccwpck_require__(313);
 function getNumberFromValue(value) {
     try {
         const num = parseInt(value);
@@ -171,32 +192,23 @@ function getConfig() {
     };
 }
 exports.getConfig = getConfig;
+__exportStar(__nccwpck_require__(313), exports);
 
 
 /***/ }),
 
-/***/ 1291:
+/***/ 5724:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ActionOutputs = exports.DispatchMethod = void 0;
-var DispatchMethod;
-(function (DispatchMethod) {
-    DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
-    DispatchMethod["WorkflowDispatch"] = "workflow_dispatch";
-})(DispatchMethod || (exports.DispatchMethod = DispatchMethod = {}));
-var ActionOutputs;
-(function (ActionOutputs) {
-    ActionOutputs["RunId"] = "run-id";
-    ActionOutputs["RunUrl"] = "run-url";
-})(ActionOutputs || (exports.ActionOutputs = ActionOutputs = {}));
+let octokit;
 
 
 /***/ }),
 
-/***/ 8947:
+/***/ 5614:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
@@ -224,6 +236,9 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -237,9 +252,8 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.getDefaultBranch = exports.getWorkflowRuns = exports.getWorkflowId = exports.repositoryDispatch = exports.workflowDispatch = exports.init = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
-const action_1 = __nccwpck_require__(9139);
-const action_types_1 = __nccwpck_require__(1291);
-const utils_1 = __nccwpck_require__(918);
+const action_1 = __nccwpck_require__(6791);
+const utils_1 = __nccwpck_require__(1606);
 let config;
 let octokit;
 function init(cfg) {
@@ -325,7 +339,7 @@ function getWorkflowRuns() {
         let status;
         let branchName;
         let response;
-        if (config.dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch) {
+        if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
             branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
             if (!config.workflow) {
                 throw new Error(`An input to 'workflow' was not provided`);
@@ -349,7 +363,7 @@ function getWorkflowRuns() {
                 owner: config.owner,
                 repo: config.repo,
                 branch: branchName,
-                event: action_types_1.DispatchMethod.RepositoryDispatch,
+                event: action_1.DispatchMethod.RepositoryDispatch,
                 per_page: 5
             });
             status = response.status;
@@ -388,6 +402,7 @@ Default Branch: ${response.data.default_branch}`);
     });
 }
 exports.getDefaultBranch = getDefaultBranch;
+__exportStar(__nccwpck_require__(5724), exports);
 
 
 /***/ }),
@@ -434,9 +449,9 @@ exports.NumberOfAttempts = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const exponential_backoff_1 = __nccwpck_require__(3183);
 const uuid_1 = __nccwpck_require__(5840);
-const action_1 = __nccwpck_require__(9139);
-const api = __importStar(__nccwpck_require__(8947));
-const utils_1 = __nccwpck_require__(918);
+const action_1 = __nccwpck_require__(6791);
+const api = __importStar(__nccwpck_require__(5614));
+const utils_1 = __nccwpck_require__(1606);
 var NumberOfAttempts;
 (function (NumberOfAttempts) {
     NumberOfAttempts[NumberOfAttempts["WorkflowId"] = 3] = "WorkflowId";
@@ -494,7 +509,7 @@ run();
 
 /***/ }),
 
-/***/ 918:
+/***/ 1606:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
 "use strict";
