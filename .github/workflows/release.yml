@@ -26,21 +26,19 @@ jobs:
         run: |
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-      - name: Set Node.js lts
+      - id: nvmrc 
+        name: Extract Node.JS Version
+        shell: bash
+        run: |
+          echo "node-version=$(cat .nvmrc)" >> "${GITHUB_OUTPUT}"
+      - name: Set Node.JS
         uses: actions/setup-node@v3
         with:
-          node-version: lts/*
-      - name: Install Dependencies
-        run: npm ci
-      - name: Test
-        id: Test
-        run: npm run test
-      - name: Lint
-        run: npm run lint
-      - name: Format Check
-        run: npm run format-check
-      - name: Build
-        run: npm run build
+          node-version: "${{ steps.nvmrc.outputs.node-version }}"
+      - run: |
+          npm ci
+      - run: |
+          npm run all
         # We need to make sure the checked-in `index.js` actually matches what we expect it to be.
       - name: Compare the Expected and Actual dist/ Directories
         run: |
