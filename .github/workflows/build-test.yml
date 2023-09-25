@@ -17,8 +17,17 @@ jobs:
       INTEGRATION_TEST_WORKFLOW_ID: 64701969 # This ID Will Change On Fork
     steps:
       - uses: actions/checkout@v4
+      - id: nvmrc 
+        name: Extract Node.JS Version
+        shell: bash
+        run: |
+          echo "node-version=$(cat .nvmrc)" >> "${GITHUB_OUTPUT}"
+      - name: Set Node.JS
+        uses: actions/setup-node@v3
+        with:
+          node-version: "${{ steps.nvmrc.outputs.node-version }}"
       - run: |
-          npm install
+          npm ci
       - run: |
           npm run all
       - uses: ./
