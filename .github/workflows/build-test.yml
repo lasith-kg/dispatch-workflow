@@ -106,6 +106,26 @@ jobs:
               "boolean-type": "true"
             }
       - uses: ./
+        id: repository-dispatch-custom-backoff
+        name: "Dispatch Using repositroy_dispatch Method and custom exponential backoff parameters"
+        with:
+          dispatch-method: "repository_dispatch"
+          event-type: "repository-dispatch"
+          repo: "${{ github.event.repository.name }}"
+          owner: "${{ github.repository_owner }}"
+          token: "${{ secrets.GITHUB_TOKEN }}"
+          workflow-inputs: |
+            {
+              "string-type": "placeholder",
+              "nested": {
+                "number-type": 1,
+                "boolean-type": true
+              }
+            }
+          starting-delay-ms: 150
+          max-attempts: 3
+          time-multiple: 1.5
+      - uses: ./
         id: wait-repository-dispatch
         name: "Dispatch Using repository_dispatch Method And Wait For Run-ID"
         with:

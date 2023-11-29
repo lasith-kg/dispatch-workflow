@@ -49,6 +49,21 @@ export interface ActionConfig {
    * A flag to enable the discovery of the Run ID from the dispatched workflow.
    */
   discover: boolean
+
+  /**
+   * The delay, in milliseconds, before executing the function for the first time
+   */
+  startingDelay: number
+
+  /**
+   * The maximum number of times to attempt GitHub API requests
+   */
+  maxAttempts: number
+
+  /**
+   * The startingDelay is multiplied by the timeMultiple to increase the delay between reattempts.
+   */
+  timeMultiple: number
 }
 
 export interface ActionWorkflowInputs {
@@ -63,4 +78,13 @@ export enum DispatchMethod {
 export enum ActionOutputs {
   RunId = 'run-id',
   RunUrl = 'run-url'
+}
+
+// Default parameters for exponential backoff. These will be the fallback
+// options in the event that the parameters responsible for tuning exponential
+// backoff are provided non-numeric inputs
+export enum ExponentialBackoff {
+  StartingDelay = 100,
+  MaxAttempts = 5,
+  TimeMultiple = 2
 }

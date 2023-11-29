@@ -2,14 +2,16 @@ import * as core from '@actions/core'
 import {
   ActionConfig,
   ActionWorkflowInputs,
-  DispatchMethod
+  DispatchMethod,
+  ExponentialBackoff
 } from './action.types'
+import {BackoffOptions} from 'exponential-backoff'
 
 function getNumberFromValue(value: string): number | undefined {
   try {
-    const num = parseInt(value)
+    const num = parseFloat(value)
     if (isNaN(num)) {
-      throw new Error('Parsed value is NaN')
+      throw new Error(`${value}: Parsed value is NaN`)
     }
     return num
   } catch {
@@ -149,7 +151,24 @@ export function getConfig(): ActionConfig {
     workflow: getWorkflow(dispatchMethod),
     eventType: getEventType(dispatchMethod),
     workflowInputs: getWorkflowInputs(dispatchMethod),
-    discover: core.getBooleanInput('discover')
+    discover: core.getBooleanInput('discover'),
+    startingDelay:
+      getNumberFromValue(core.getInput('starting-delay-ms')) ||
+      ExponentialBackoff.StartingDelay,
+    maxAttempts:
+      getNumberFromValue(core.getInput('max-attempts')) ||
+      ExponentialBackoff.MaxAttempts,
+    timeMultiple:
+      getNumberFromValue(core.getInput('time-multiple')) ||
+      ExponentialBackoff.TimeMultiple
+  }
+}
+
+export function getBackoffOptions(config: ActionConfig): BackoffOptions {
+  return {
+    timeMultiple: config.timeMultiple,
+    numOfAttempts: config.maxAttempts,
+    startingDelay: config.startingDelay
   }
 }
 
