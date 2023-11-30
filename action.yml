@@ -40,7 +40,7 @@ inputs:
     required: false
     default: 200
   max-attempts:
-    description: The maximum number of times to attempt GitHub API requests.
+    description: The maximum number of times to attempt read-only GitHub API requests.
     required: false
     default: 5
   time-multiple:

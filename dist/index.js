@@ -23,7 +23,7 @@ var ActionOutputs;
 // backoff are provided non-numeric inputs
 var ExponentialBackoff;
 (function (ExponentialBackoff) {
-    ExponentialBackoff[ExponentialBackoff["StartingDelay"] = 100] = "StartingDelay";
+    ExponentialBackoff[ExponentialBackoff["StartingDelay"] = 200] = "StartingDelay";
     ExponentialBackoff[ExponentialBackoff["MaxAttempts"] = 5] = "MaxAttempts";
     ExponentialBackoff[ExponentialBackoff["TimeMultiple"] = 2] = "TimeMultiple";
 })(ExponentialBackoff || (exports.ExponentialBackoff = ExponentialBackoff = {}));

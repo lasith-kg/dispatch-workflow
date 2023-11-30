@@ -56,7 +56,7 @@ export interface ActionConfig {
   startingDelay: number
 
   /**
-   * The maximum number of times to attempt GitHub API requests
+   * The maximum number of times to attempt read-only GitHub API requests
    */
   maxAttempts: number
 
@@ -84,7 +84,7 @@ export enum ActionOutputs {
 // options in the event that the parameters responsible for tuning exponential
 // backoff are provided non-numeric inputs
 export enum ExponentialBackoff {
-  StartingDelay = 100,
+  StartingDelay = 200,
   MaxAttempts = 5,
   TimeMultiple = 2
 }

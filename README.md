@@ -216,7 +216,7 @@ The below table shows the neccessary permissions for all the unique combinations
 | `workflow-inputs`   | A JSON object that contains extra information that will be provided to the dispatch call                                              | `false`       | `'{}'`  |
 | `discover`          | A flag to enable the discovery of the Run ID from the dispatched workflow                                                             | `false`       | `false` |
 | `starting-delay-ms` | The delay, in milliseconds, before executing the function for the first time.                                                         | `false`       | `200`   |
-| `max-attempts`      | The maximum number of times to attempt GitHub API requests.                                                                           | `false`       | `5`     |
+| `max-attempts`      | The maximum number of times to attempt read-only GitHub API requests.                                                                 | `false`       | `5`     |
 | `time-multiple`     | The `starting-delay-ms` is multiplied by the `time-multiple` to increase the delay between reattempts.                                | `false`       | `2`     |
 
 # Outputs
@@ -325,7 +325,7 @@ types must be wrapped in **quotes** to successfully dispatch the workflow.
 When interacting with the GitHub REST API, it's beneficial to handle potential flakiness by employing exponential backoff. This action allows users to customize this behavior through optional parameters, although the default values work well for most scenarios.
 
 - `starting-delay-ms`: The initial delay, in milliseconds, before the first API call attempt.
-- `max-attempts`: The maximum number of times to attempt GitHub API requests.
+- `max-attempts`: The maximum number of times to attempt read-only GitHub API requests.
 - `time-multiple`: The factor by which the `starting-delay-ms` is multiplied for each reattempt, influencing the delay duration.
 
 ```yaml
