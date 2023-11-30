@@ -18,10 +18,12 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
     ...(config.discover ? {distinct_id: distinctId} : undefined)
   }
   if (!config.workflow) {
-    throw new Error(`workflowDispatch: An input to 'workflow' was not provided`)
+    throw new Error(
+      `workflow_dispatch: An input to 'workflow' was not provided`
+    )
   }
   if (!config.ref) {
-    throw new Error(`workflowDispatch: An input to 'ref' was not provided`)
+    throw new Error(`workflow_dispatch: An input to 'ref' was not provided`)
   }
   // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
   const response = await octokit.rest.actions.createWorkflowDispatch({
@@ -34,17 +36,16 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
 
   if (response.status !== 204) {
     throw new Error(
-      `workflowDispatch: Failed to dispatch action, expected 204 but received ${response.status}`
+      `workflow_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`
     )
   }
 
-  core.info(`
-Successfully dispatched workflow using workflow_dispatch method:
-Repository: ${config.owner}/${config.repo}
-Branch: ${config.ref}
-Workflow ID: ${config.workflow}
-Distinct ID: ${distinctId}
-Workflow Inputs: ${JSON.stringify(inputs)}`)
+  core.info(`✅ Successfully dispatched workflow using workflow_dispatch method:
+    repository: ${config.owner}/${config.repo}
+    branch: ${config.ref}
+    workflow-id: ${config.workflow}
+    distinct-id: ${distinctId}
+    workflow-inputs: ${JSON.stringify(inputs)}`)
 }
 
 export async function repositoryDispatch(distinctId: string): Promise<void> {
@@ -54,7 +55,7 @@ export async function repositoryDispatch(distinctId: string): Promise<void> {
   }
   if (!config.eventType) {
     throw new Error(
-      `repositoryDispatch: An input to 'event-type' was not provided`
+      `repository_dispatch: An input to 'event-type' was not provided`
     )
   }
   // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
@@ -67,16 +68,15 @@ export async function repositoryDispatch(distinctId: string): Promise<void> {
 
   if (response.status !== 204) {
     throw new Error(
-      `repositoryDispatch: Failed to dispatch action, expected 204 but received ${response.status}`
+      `repository_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`
     )
   }
 
-  core.info(`
-Successfully dispatched workflow using repository_dispatch method:
-Repository: ${config.owner}/${config.repo}
-Event Type: ${config.eventType}
-Distinct ID: ${distinctId}
-Client Payload: ${JSON.stringify(clientPayload)}`)
+  core.info(`✅ Successfully dispatched workflow using repository_dispatch method:
+    repository: ${config.owner}/${config.repo}
+    event-type: ${config.eventType}
+    distinct-id: ${distinctId}
+    client-payload: ${JSON.stringify(clientPayload)}`)
 }
 
 export async function getWorkflowId(workflowFilename: string): Promise<number> {

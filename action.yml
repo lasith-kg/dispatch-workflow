@@ -35,6 +35,18 @@ inputs:
     description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
     required: false
     default: 'false'
+  starting-delay-ms:
+    description: The delay, in milliseconds, before executing the function for the first time.
+    required: false
+    default: 200
+  max-attempts:
+    description: The maximum number of times to attempt read-only GitHub API requests.
+    required: false
+    default: 5
+  time-multiple:
+    description: The starting-delay-ms is multiplied by the time-multiple to increase the delay between reattempts.
+    required: false
+    default: 2
 runs:
   using: 'node16'
   main: 'dist/index.js'
