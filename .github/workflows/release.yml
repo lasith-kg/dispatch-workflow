@@ -32,7 +32,7 @@ jobs:
         run: |
           echo "node-version=$(cat .nvmrc)" >> "${GITHUB_OUTPUT}"
       - name: Set Node.JS
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "${{ steps.nvmrc.outputs.node-version }}"
       - id: clean-dist
