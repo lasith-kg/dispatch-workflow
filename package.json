@@ -1,6 +1,6 @@
 {
   "name": "dispatch-workflow",
-  "version": "1.7.0",
+  "version": "2.0.0",
   "private": true,
   "description": "A GitHub action to dispatch a remote GitHub workflow and optionally retrieve its information",
   "main": "lib/index.js",
