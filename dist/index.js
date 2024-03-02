@@ -7,7 +7,7 @@ require('./sourcemap-register.js');/******/ (() => { // webpackBootstrap
 "use strict";
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.ActionOutputs = exports.DispatchMethod = void 0;
+exports.ExponentialBackoff = exports.ActionOutputs = exports.DispatchMethod = void 0;
 var DispatchMethod;
 (function (DispatchMethod) {
     DispatchMethod["RepositoryDispatch"] = "repository_dispatch";
@@ -18,6 +18,15 @@ var ActionOutputs;
     ActionOutputs["RunId"] = "run-id";
     ActionOutputs["RunUrl"] = "run-url";
 })(ActionOutputs || (exports.ActionOutputs = ActionOutputs = {}));
+// Default parameters for exponential backoff. These will be the fallback
+// options in the event that the parameters responsible for tuning exponential
+// backoff are provided non-numeric inputs
+var ExponentialBackoff;
+(function (ExponentialBackoff) {
+    ExponentialBackoff[ExponentialBackoff["StartingDelay"] = 200] = "StartingDelay";
+    ExponentialBackoff[ExponentialBackoff["MaxAttempts"] = 5] = "MaxAttempts";
+    ExponentialBackoff[ExponentialBackoff["TimeMultiple"] = 2] = "TimeMultiple";
+})(ExponentialBackoff || (exports.ExponentialBackoff = ExponentialBackoff = {}));
 
 
 /***/ }),
@@ -54,14 +63,14 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.getConfig = void 0;
+exports.getBackoffOptions = exports.getConfig = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const action_types_1 = __nccwpck_require__(313);
 function getNumberFromValue(value) {
     try {
-        const num = parseInt(value);
+        const num = parseFloat(value);
         if (isNaN(num)) {
-            throw new Error('Parsed value is NaN');
+            throw new Error(`${value}: Parsed value is NaN`);
         }
         return num;
     }
@@ -188,10 +197,24 @@ function getConfig() {
         workflow: getWorkflow(dispatchMethod),
         eventType: getEventType(dispatchMethod),
         workflowInputs: getWorkflowInputs(dispatchMethod),
-        discover: core.getBooleanInput('discover')
+        discover: core.getBooleanInput('discover'),
+        startingDelay: getNumberFromValue(core.getInput('starting-delay-ms')) ||
+            action_types_1.ExponentialBackoff.StartingDelay,
+        maxAttempts: getNumberFromValue(core.getInput('max-attempts')) ||
+            action_types_1.ExponentialBackoff.MaxAttempts,
+        timeMultiple: getNumberFromValue(core.getInput('time-multiple')) ||
+            action_types_1.ExponentialBackoff.TimeMultiple
     };
 }
 exports.getConfig = getConfig;
+function getBackoffOptions(config) {
+    return {
+        timeMultiple: config.timeMultiple,
+        numOfAttempts: config.maxAttempts,
+        startingDelay: config.startingDelay
+    };
+}
+exports.getBackoffOptions = getBackoffOptions;
 __exportStar(__nccwpck_require__(313), exports);
 
 
@@ -265,10 +288,10 @@ function workflowDispatch(distinctId) {
     return __awaiter(this, void 0, void 0, function* () {
         const inputs = Object.assign(Object.assign({}, config.workflowInputs), (config.discover ? { distinct_id: distinctId } : undefined));
         if (!config.workflow) {
-            throw new Error(`workflowDispatch: An input to 'workflow' was not provided`);
+            throw new Error(`workflow_dispatch: An input to 'workflow' was not provided`);
         }
         if (!config.ref) {
-            throw new Error(`workflowDispatch: An input to 'ref' was not provided`);
+            throw new Error(`workflow_dispatch: An input to 'ref' was not provided`);
         }
         // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
         const response = yield octokit.rest.actions.createWorkflowDispatch({
@@ -279,15 +302,14 @@ function workflowDispatch(distinctId) {
             inputs
         });
         if (response.status !== 204) {
-            throw new Error(`workflowDispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
+            throw new Error(`workflow_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
         }
-        core.info(`
-Successfully dispatched workflow using workflow_dispatch method:
-Repository: ${config.owner}/${config.repo}
-Branch: ${config.ref}
-Workflow ID: ${config.workflow}
-Distinct ID: ${distinctId}
-Workflow Inputs: ${JSON.stringify(inputs)}`);
+        core.info(`✅ Successfully dispatched workflow using workflow_dispatch method:
+    repository: ${config.owner}/${config.repo}
+    branch: ${config.ref}
+    workflow-id: ${config.workflow}
+    distinct-id: ${distinctId}
+    workflow-inputs: ${JSON.stringify(inputs)}`);
     });
 }
 exports.workflowDispatch = workflowDispatch;
@@ -295,7 +317,7 @@ function repositoryDispatch(distinctId) {
     return __awaiter(this, void 0, void 0, function* () {
         const clientPayload = Object.assign(Object.assign({}, config.workflowInputs), (config.discover ? { distinct_id: distinctId } : undefined));
         if (!config.eventType) {
-            throw new Error(`repositoryDispatch: An input to 'event-type' was not provided`);
+            throw new Error(`repository_dispatch: An input to 'event-type' was not provided`);
         }
         // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
         const response = yield octokit.rest.repos.createDispatchEvent({
@@ -305,14 +327,13 @@ function repositoryDispatch(distinctId) {
             client_payload: clientPayload
         });
         if (response.status !== 204) {
-            throw new Error(`repositoryDispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
+            throw new Error(`repository_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
         }
-        core.info(`
-Successfully dispatched workflow using repository_dispatch method:
-Repository: ${config.owner}/${config.repo}
-Event Type: ${config.eventType}
-Distinct ID: ${distinctId}
-Client Payload: ${JSON.stringify(clientPayload)}`);
+        core.info(`✅ Successfully dispatched workflow using repository_dispatch method:
+    repository: ${config.owner}/${config.repo}
+    event-type: ${config.eventType}
+    distinct-id: ${distinctId}
+    client-payload: ${JSON.stringify(clientPayload)}`);
     });
 }
 exports.repositoryDispatch = repositoryDispatch;
@@ -445,30 +466,30 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
-exports.NumberOfAttempts = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const exponential_backoff_1 = __nccwpck_require__(3183);
 const uuid_1 = __nccwpck_require__(5840);
 const action_1 = __nccwpck_require__(6791);
 const api = __importStar(__nccwpck_require__(5614));
 const utils_1 = __nccwpck_require__(1606);
-var NumberOfAttempts;
-(function (NumberOfAttempts) {
-    NumberOfAttempts[NumberOfAttempts["WorkflowId"] = 3] = "WorkflowId";
-    NumberOfAttempts[NumberOfAttempts["WorkflowRuns"] = 5] = "WorkflowRuns";
-})(NumberOfAttempts || (exports.NumberOfAttempts = NumberOfAttempts = {}));
 const DISTINCT_ID = (0, uuid_1.v4)();
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const config = (0, action_1.getConfig)();
             api.init(config);
+            const backoffOptions = (0, action_1.getBackoffOptions)(config);
+            // Display Exponential Backoff Options (if debug mode is enabled)
+            core.info(`🔄 Exponential backoff parameters:
+    starting-delay: ${backoffOptions.startingDelay}
+    max-attempts: ${backoffOptions.numOfAttempts}
+    time-multiple: ${backoffOptions.timeMultiple}`);
             // Get the workflow ID if give a string
             if (typeof config.workflow === 'string') {
                 const workflowFileName = config.workflow;
-                core.info(`Fetching Workflow ID for ${workflowFileName}...`);
-                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }), { numOfAttempts: NumberOfAttempts.WorkflowId });
-                core.info(`Fetched Workflow ID: ${workflowId}`);
+                core.info(`⌛ Fetching workflow id for ${workflowFileName}`);
+                const workflowId = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () { return api.getWorkflowId(workflowFileName); }), backoffOptions);
+                core.info(`✅ Fetched workflow id: ${workflowId}`);
                 config.workflow = workflowId;
             }
             // Dispatch the action using the chosen dispatch method
@@ -480,26 +501,26 @@ function run() {
             }
             // Exit Early Early if discover is disabled
             if (!config.discover) {
-                core.info('Workflow dispatched! Skipping the retrieval of the run-id');
+                core.info('✅ Workflow dispatched! Skipping the retrieval of the run-id');
                 return;
             }
-            core.debug(`Attempting to fetch Run IDs for workflow with distinct id [${DISTINCT_ID}]`);
+            core.info(`⌛ Fetching run-ids for workflow with distinct-id=${DISTINCT_ID}`);
             const dispatchedWorkflowRun = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () {
                 const workflowRuns = yield api.getWorkflowRuns();
                 const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
                 return dispatchedWorkflowRun;
-            }), { numOfAttempts: NumberOfAttempts.WorkflowRuns });
-            core.info('Successfully identified remote Run:\n' +
-                `  Run ID: ${dispatchedWorkflowRun.id}\n` +
-                `  URL: ${dispatchedWorkflowRun.htmlUrl}`);
+            }), backoffOptions);
+            core.info(`✅ Successfully identified remote run:
+    run-id: ${dispatchedWorkflowRun.id}
+    run-url: ${dispatchedWorkflowRun.htmlUrl}`);
             core.setOutput(action_1.ActionOutputs.RunId, dispatchedWorkflowRun.id);
             core.setOutput(action_1.ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
         }
         catch (error) {
             if (error instanceof Error) {
-                core.warning('Does the token have the correct permissions?');
+                core.warning('🟠 Does the token have the correct permissions?');
                 error.stack && core.debug(error.stack);
-                core.setFailed(`Failed to complete: ${error.message}`);
+                core.setFailed(`🔴 Failed to complete: ${error.message}`);
             }
         }
     });

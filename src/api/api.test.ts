@@ -1,4 +1,3 @@
-import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {v4 as uuid} from 'uuid'
 import {afterEach, beforeEach, describe, expect, it, jest} from '@jest/globals'
@@ -10,7 +9,7 @@ import {
   getDefaultBranch,
   getWorkflowRuns
 } from '.'
-import {ActionConfig, DispatchMethod} from '../action'
+import {ActionConfig, DispatchMethod, ExponentialBackoff} from '../action'
 
 jest.mock('@actions/core')
 
@@ -51,10 +50,10 @@ describe('API', () => {
     placeholder: 'placeholder'
   }
 
-  let mockEnvConfig: ActionConfig
+  let mockActionConfig: ActionConfig
 
   beforeEach(() => {
-    mockEnvConfig = {
+    mockActionConfig = {
       dispatchMethod: DispatchMethod.WorkflowDispatch,
       eventType: '',
       repo: 'repository',
@@ -63,20 +62,14 @@ describe('API', () => {
       workflow: 'workflow.yml',
       workflowInputs,
       token: 'token',
-      discover: true
+      discover: true,
+      startingDelay: ExponentialBackoff.StartingDelay,
+      maxAttempts: ExponentialBackoff.MaxAttempts,
+      timeMultiple: ExponentialBackoff.TimeMultiple
     }
 
-    jest.spyOn(core, 'getBooleanInput').mockImplementation((input: string) => {
-      switch (input) {
-        case 'discover':
-          return mockEnvConfig.discover
-        default:
-          throw new Error('invalid input requested')
-      }
-    })
-
     jest.spyOn(github, 'getOctokit').mockReturnValue(mockOctokit as any)
-    init(mockEnvConfig)
+    init(mockActionConfig)
   })
 
   afterEach(() => {
@@ -85,11 +78,11 @@ describe('API', () => {
 
   describe('workflowDispatch', () => {
     beforeEach(() => {
-      mockEnvConfig.dispatchMethod = DispatchMethod.WorkflowDispatch
-      mockEnvConfig.workflow = 'workflow.yml'
-      mockEnvConfig.eventType = ''
-      mockEnvConfig.ref = 'feature_branch'
-      init(mockEnvConfig)
+      mockActionConfig.dispatchMethod = DispatchMethod.WorkflowDispatch
+      mockActionConfig.workflow = 'workflow.yml'
+      mockActionConfig.eventType = ''
+      mockActionConfig.ref = 'feature_branch'
+      init(mockActionConfig)
     })
 
     it('should resolve after a successful dispatch', async () => {
@@ -142,8 +135,8 @@ describe('API', () => {
     })
 
     it('should dispatch without a distinctId in the inputs if discover is set to false', async () => {
-      mockEnvConfig.discover = false
-      init(mockEnvConfig)
+      mockActionConfig.discover = false
+      init(mockActionConfig)
 
       const distinctId = uuid()
       let dispatchedId: string | undefined
@@ -163,8 +156,8 @@ describe('API', () => {
     })
 
     it('should throw if workflowDispatch is invoked without workflow configured', async () => {
-      mockEnvConfig.workflow = ''
-      init(mockEnvConfig)
+      mockActionConfig.workflow = ''
+      init(mockActionConfig)
 
       await expect(workflowDispatch('')).rejects.toThrow(
         `An input to 'workflow' was not provided`
@@ -172,8 +165,8 @@ describe('API', () => {
     })
 
     it('should throw if workflowDispatch is invoked without ref configured', async () => {
-      mockEnvConfig.ref = ''
-      init(mockEnvConfig)
+      mockActionConfig.ref = ''
+      init(mockActionConfig)
 
       await expect(workflowDispatch('')).rejects.toThrow(
         `An input to 'ref' was not provided`
@@ -183,11 +176,11 @@ describe('API', () => {
 
   describe('repositoryDispatch', () => {
     beforeEach(() => {
-      mockEnvConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
-      mockEnvConfig.workflow = ''
-      mockEnvConfig.eventType = 'deploy'
-      mockEnvConfig.ref = ''
-      init(mockEnvConfig)
+      mockActionConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
+      mockActionConfig.workflow = ''
+      mockActionConfig.eventType = 'deploy'
+      mockActionConfig.ref = ''
+      init(mockActionConfig)
     })
 
     it('should resolve after a successful dispatch', async () => {
@@ -234,8 +227,8 @@ describe('API', () => {
     })
 
     it('should dispatch without a distinctId in the inputs if discover is set to false', async () => {
-      mockEnvConfig.discover = false
-      init(mockEnvConfig)
+      mockActionConfig.discover = false
+      init(mockActionConfig)
 
       const distinctId = uuid()
       let dispatchedId: string | undefined
@@ -255,8 +248,8 @@ describe('API', () => {
     })
 
     it('should throw if repositoryDispatch is invoked without an event-type configured', async () => {
-      mockEnvConfig.eventType = ''
-      init(mockEnvConfig)
+      mockActionConfig.eventType = ''
+      init(mockActionConfig)
 
       await expect(repositoryDispatch('')).rejects.toThrow(
         `An input to 'event-type' was not provided`
@@ -359,11 +352,11 @@ describe('API', () => {
   describe('getWorkflowRuns', () => {
     describe('workflowDispatch', () => {
       beforeEach(() => {
-        mockEnvConfig.dispatchMethod = DispatchMethod.WorkflowDispatch
-        mockEnvConfig.workflow = 'workflow.yml'
-        mockEnvConfig.eventType = ''
-        mockEnvConfig.ref = 'refs/heads/feature_branch'
-        init(mockEnvConfig)
+        mockActionConfig.dispatchMethod = DispatchMethod.WorkflowDispatch
+        mockActionConfig.workflow = 'workflow.yml'
+        mockActionConfig.eventType = ''
+        mockActionConfig.ref = 'refs/heads/feature_branch'
+        init(mockActionConfig)
       })
 
       it('should return the workflow runs for a valid configuration', async () => {
@@ -395,8 +388,8 @@ describe('API', () => {
       })
 
       it('should return the workflow runs for a tags ref', async () => {
-        mockEnvConfig.ref = 'refs/tags/v1.0.0'
-        init(mockEnvConfig)
+        mockActionConfig.ref = 'refs/tags/v1.0.0'
+        init(mockActionConfig)
 
         const mockData = {
           workflow_runs: [
@@ -426,8 +419,8 @@ describe('API', () => {
       })
 
       it('should throw if getWorkflowRuns is invoked without a workflow configured', async () => {
-        mockEnvConfig.workflow = ''
-        init(mockEnvConfig)
+        mockActionConfig.workflow = ''
+        init(mockActionConfig)
 
         await expect(getWorkflowRuns()).rejects.toThrow(
           `An input to 'workflow' was not provided`
@@ -437,11 +430,11 @@ describe('API', () => {
 
     describe('repositoryDispatch', () => {
       beforeEach(() => {
-        mockEnvConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
-        mockEnvConfig.workflow = ''
-        mockEnvConfig.eventType = 'deploy'
-        mockEnvConfig.ref = ''
-        init(mockEnvConfig)
+        mockActionConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
+        mockActionConfig.workflow = ''
+        mockActionConfig.eventType = 'deploy'
+        mockActionConfig.ref = ''
+        init(mockActionConfig)
 
         jest.spyOn(mockOctokit.rest.repos, 'get').mockReturnValue(
           Promise.resolve({
