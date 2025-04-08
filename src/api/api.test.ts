@@ -484,10 +484,6 @@ describe('API', () => {
           .spyOn(mockOctokit, 'paginate')
           .mockImplementation(async (method, _params, _mapFn) => {
             if (method === mockOctokit.rest.actions.listWorkflowRuns) {
-              // throw Object.assign(new Error('Request failed'), {
-              //   status: errorStatus
-              // })
-
               throw new RequestError('Request failed', errorStatus, {
                 request: {
                   method: 'GET',

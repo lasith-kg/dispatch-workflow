@@ -2,12 +2,8 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {getConfig, ActionConfig, DispatchMethod} from '../action'
 import {getBranchNameFromRef} from '../utils'
-import {
-  Octokit,
-  OctokitRequestError,
-  WorkflowRun,
-  WorkflowRunResponse
-} from './api.types'
+import {Octokit, WorkflowRun, WorkflowRunResponse} from './api.types'
+import {RequestError} from '@octokit/request-error'
 
 let config: ActionConfig
 let octokit: Octokit
@@ -163,12 +159,8 @@ export async function getWorkflowRuns(
   } catch (error) {
     const err = `Failed to get workflow runs.`
 
-    if ((error as OctokitRequestError)?.name === `HttpError`) {
-      throw new Error(
-        `${err} Expected 200 but received ${
-          (error as OctokitRequestError).status
-        }`
-      )
+    if (error instanceof RequestError) {
+      throw new Error(`${err} Expected 200 but received ${error.status}`)
     }
 
     throw new Error(`${err} ${error}`)

@@ -1,8 +1,7 @@
 import type {GitHub} from '@actions/github/lib/utils'
 
 import {
-  GetResponseDataTypeFromEndpointMethod,
-  RequestError
+  GetResponseDataTypeFromEndpointMethod
   // eslint-disable-next-line import/no-unresolved
 } from '@octokit/types'
 
@@ -18,5 +17,3 @@ export interface WorkflowRun {
 export type WorkflowRunResponse = GetResponseDataTypeFromEndpointMethod<
   typeof octokit.paginate
 >
-
-export type OctokitRequestError = RequestError
