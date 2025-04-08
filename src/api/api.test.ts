@@ -10,6 +10,7 @@ import {
   getWorkflowRuns
 } from '.'
 import {ActionConfig, DispatchMethod, ExponentialBackoff} from '../action'
+import {RequestError} from '@octokit/request-error'
 
 jest.mock('@actions/core')
 
@@ -42,6 +43,9 @@ const mockOctokit = {
         throw new Error('Should be mocked')
       }
     }
+  },
+  paginate: async (_method: any, _params: any, _mapFn: any): Promise<any> => {
+    throw new Error('Should be mocked')
   }
 }
 
@@ -50,9 +54,12 @@ describe('API', () => {
     placeholder: 'placeholder'
   }
 
+  let startEpoch: number
   let mockActionConfig: ActionConfig
 
   beforeEach(() => {
+    startEpoch = Date.now()
+
     mockActionConfig = {
       dispatchMethod: DispatchMethod.WorkflowDispatch,
       eventType: '',
@@ -360,69 +367,65 @@ describe('API', () => {
       })
 
       it('should return the workflow runs for a valid configuration', async () => {
-        const mockData = {
-          workflow_runs: [
-            {
-              id: 0,
-              name: 'Apple',
-              html_url: 'http://github.com/0'
-            },
-            {
-              id: 1,
-              html_url: 'http://github.com/1'
-            }
-          ]
-        }
+        const mockData = [
+          {
+            id: 0,
+            name: 'Apple',
+            html_url: 'http://github.com/0'
+          },
+          {
+            id: 1,
+            html_url: 'http://github.com/1'
+          }
+        ]
 
         jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
-          .mockReturnValue(
-            Promise.resolve({
-              data: mockData,
-              status: 200
-            })
-          )
+          .spyOn(mockOctokit, 'paginate')
+          .mockImplementation(async (method, _params, _mapFn) => {
+            if (method === mockOctokit.rest.actions.listWorkflowRuns) {
+              return mockData
+            }
+            throw new Error(`Unexpected paginate call, got ${method}`)
+          })
 
-        const workflowRuns = await getWorkflowRuns()
-        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
+        const workflowRuns = await getWorkflowRuns(startEpoch)
+        expect(workflowRuns.length).toStrictEqual(mockData.length)
       })
 
       it('should return the workflow runs for a tags ref', async () => {
         mockActionConfig.ref = 'refs/tags/v1.0.0'
         init(mockActionConfig)
 
-        const mockData = {
-          workflow_runs: [
-            {
-              id: 0,
-              name: 'Apple',
-              html_url: 'http://github.com/0'
-            },
-            {
-              id: 1,
-              html_url: 'http://github.com/1'
-            }
-          ]
-        }
+        const mockData = [
+          {
+            id: 0,
+            name: 'Apple',
+            html_url: 'http://github.com/0'
+          },
+          {
+            id: 1,
+            html_url: 'http://github.com/1'
+          }
+        ]
 
         jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
-          .mockReturnValue(
-            Promise.resolve({
-              data: mockData,
-              status: 200
-            })
-          )
+          .spyOn(mockOctokit, 'paginate')
+          .mockImplementation(async (method, _params, _mapFn) => {
+            if (method === mockOctokit.rest.actions.listWorkflowRuns) {
+              return mockData
+            }
+            throw new Error(`Unexpected paginate call, got ${method}`)
+          })
 
-        const workflowRuns = await getWorkflowRuns()
-        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
+        const workflowRuns = await getWorkflowRuns(startEpoch)
+        expect(workflowRuns.length).toStrictEqual(mockData.length)
       })
 
       it('should throw if getWorkflowRuns is invoked without a workflow configured', async () => {
         mockActionConfig.workflow = ''
         init(mockActionConfig)
 
-        await expect(getWorkflowRuns()).rejects.toThrow(
+        await expect(getWorkflowRuns(startEpoch)).rejects.toThrow(
           `An input to 'workflow' was not provided`
         )
       })
@@ -447,31 +450,29 @@ describe('API', () => {
       })
 
       it('should return the workflow runs for a valid configuration', async () => {
-        const mockData = {
-          workflow_runs: [
-            {
-              id: 0,
-              name: 'Apple',
-              html_url: 'http://github.com/0'
-            },
-            {
-              id: 1,
-              html_url: 'http://github.com/1'
-            }
-          ]
-        }
+        const mockData = [
+          {
+            id: 0,
+            name: 'Apple',
+            html_url: 'http://github.com/0'
+          },
+          {
+            id: 1,
+            html_url: 'http://github.com/1'
+          }
+        ]
 
         jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRunsForRepo')
-          .mockReturnValue(
-            Promise.resolve({
-              data: mockData,
-              status: 200
-            })
-          )
+          .spyOn(mockOctokit, 'paginate')
+          .mockImplementation(async (method, _params, _mapFn) => {
+            if (method === mockOctokit.rest.actions.listWorkflowRunsForRepo) {
+              return mockData
+            }
+            throw new Error(`Unexpected paginate call, got ${method}`)
+          })
 
-        const workflowRuns = await getWorkflowRuns()
-        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
+        const workflowRuns = await getWorkflowRuns(startEpoch)
+        expect(workflowRuns.length).toStrictEqual(mockData.length)
       })
     })
 
@@ -480,16 +481,32 @@ describe('API', () => {
         const errorStatus = 404
 
         jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
-          .mockReturnValue(
-            Promise.resolve({
-              data: undefined,
-              status: errorStatus
-            })
-          )
+          .spyOn(mockOctokit, 'paginate')
+          .mockImplementation(async (method, _params, _mapFn) => {
+            if (method === mockOctokit.rest.actions.listWorkflowRuns) {
+              // throw Object.assign(new Error('Request failed'), {
+              //   status: errorStatus
+              // })
 
-        await expect(getWorkflowRuns()).rejects.toThrowError(
-          `Failed to get workflow runs, expected 200 but received ${errorStatus}`
+              throw new RequestError('Request failed', errorStatus, {
+                request: {
+                  method: 'GET',
+                  url: 'https://api.github.com/foo',
+                  headers: {}
+                },
+                response: {
+                  status: 500,
+                  url: 'https://api.github.com/foo',
+                  headers: {},
+                  data: []
+                }
+              })
+            }
+            throw new Error(`Unexpected paginate call, got ${method}`)
+          })
+
+        await expect(getWorkflowRuns(startEpoch)).rejects.toThrowError(
+          `Expected 200 but received ${errorStatus}`
         )
       })
     })

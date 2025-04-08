@@ -281,14 +281,7 @@ let config;
 let octokit;
 function init(cfg) {
     config = cfg || (0, action_1.getConfig)();
-    octokit = github.getOctokit(config.token, {
-        log: {
-            debug: (message) => core.debug(message),
-            info: (message) => core.info(message),
-            warn: (message) => core.warning(message),
-            error: (message) => core.error(message)
-        }
-    });
+    octokit = github.getOctokit(config.token);
 }
 exports.init = init;
 function workflowDispatch(distinctId) {
@@ -375,15 +368,8 @@ function getWorkflowRuns(startEpoch) {
                     throw new Error(`An input to 'workflow' was not provided`);
                 }
                 // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-                response = yield octokit.paginate(octokit.rest.actions.listWorkflowRuns, Object.assign({ owner: config.owner, repo: config.repo, created: `>${startTime.toISOString()}`, workflow_id: config.workflow }, (branchName
-                    ? {
-                        branch: branchName,
-                        per_page: 5
-                    }
-                    : {
-                        per_page: 10
-                    })), resp => {
-                    // core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
+                response = yield octokit.paginate(octokit.rest.actions.listWorkflowRuns, Object.assign({ owner: config.owner, repo: config.repo, created: `>${startTime.toISOString()}`, workflow_id: config.workflow }, (branchName ? { branch: branchName } : {})), resp => {
+                    core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`);
                     return resp.data;
                 });
             }
@@ -396,22 +382,20 @@ function getWorkflowRuns(startEpoch) {
                     repo: config.repo,
                     branch: branchName,
                     created: `>${startTime.toISOString()}`,
-                    event: action_1.DispatchMethod.RepositoryDispatch,
-                    per_page: 5
+                    event: action_1.DispatchMethod.RepositoryDispatch
                 }, resp => {
-                    // core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
+                    core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`);
                     return resp.data;
                 });
             }
         }
         catch (error) {
-            core.error(`getWorkflowRuns: Failed to get workflow runs`);
+            const err = `Failed to get workflow runs.`;
             if ((error === null || error === void 0 ? void 0 : error.name) === `HttpError`) {
-                throw new Error(`Expected 200 but received: ${error.status}`);
+                throw new Error(`${err} Expected 200 but received ${error.status}`);
             }
-            throw new Error(`getWorkflowRuns: Failed to get workflow runs, ${error}`);
+            throw new Error(`${err} ${error}`);
         }
-        core.debug(`OSCAR2 response: ${JSON.stringify(response, null, 2)}`);
         const workflowRuns = response.map((workflowRun) => ({
             id: workflowRun.id,
             name: workflowRun.name || '',
@@ -500,7 +484,6 @@ function run() {
             const config = (0, action_1.getConfig)();
             api.init(config);
             const backoffOptions = (0, action_1.getBackoffOptions)(config);
-            core.info(`OSCAR: Running with core.isDebug(): ${core.isDebug()}`);
             // Display Exponential Backoff Options (if debug mode is enabled)
             core.info(`🔄 Exponential backoff parameters:
     starting-delay: ${backoffOptions.startingDelay}

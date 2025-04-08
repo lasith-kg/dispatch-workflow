@@ -134,14 +134,7 @@ export async function getWorkflowRuns(
           repo: config.repo,
           created: `>${startTime.toISOString()}`,
           workflow_id: config.workflow,
-          ...(branchName
-            ? {
-                branch: branchName,
-                per_page: 5
-              }
-            : {
-                per_page: 10
-              })
+          ...(branchName ? {branch: branchName} : {})
         },
         resp => {
           core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
@@ -159,8 +152,7 @@ export async function getWorkflowRuns(
           repo: config.repo,
           branch: branchName,
           created: `>${startTime.toISOString()}`,
-          event: DispatchMethod.RepositoryDispatch,
-          per_page: 5
+          event: DispatchMethod.RepositoryDispatch
         },
         resp => {
           core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
@@ -169,15 +161,17 @@ export async function getWorkflowRuns(
       )
     }
   } catch (error) {
-    core.error(`getWorkflowRuns: Failed to get workflow runs`)
+    const err = `Failed to get workflow runs.`
 
     if ((error as OctokitRequestError)?.name === `HttpError`) {
       throw new Error(
-        `Expected 200 but received: ${(error as OctokitRequestError).status}`
+        `${err} Expected 200 but received ${
+          (error as OctokitRequestError).status
+        }`
       )
     }
 
-    throw new Error(`getWorkflowRuns: Failed to get workflow runs, ${error}`)
+    throw new Error(`${err} ${error}`)
   }
 
   const workflowRuns: WorkflowRun[] = response.map(
