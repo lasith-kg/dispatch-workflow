@@ -2,7 +2,12 @@ import * as core from '@actions/core'
 import * as github from '@actions/github'
 import {getConfig, ActionConfig, DispatchMethod} from '../action'
 import {getBranchNameFromRef} from '../utils'
-import {Octokit, WorkflowRun, WorkflowRunResponse} from './api.types'
+import {
+  Octokit,
+  OctokitRequestError,
+  WorkflowRun,
+  WorkflowRunResponse
+} from './api.types'
 
 let config: ActionConfig
 let octokit: Octokit
@@ -105,54 +110,78 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
   return workflow.id
 }
 
-export async function getWorkflowRuns(): Promise<WorkflowRun[]> {
-  let status: number
+export async function getWorkflowRuns(
+  startEpoch: number
+): Promise<WorkflowRun[]> {
   let branchName: string | undefined
   let response: WorkflowRunResponse
 
-  if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
-    branchName = getBranchNameFromRef(config.ref)
+  // Allow for some clock drift between CI runner and GH API
+  const startTime = new Date(startEpoch - 5 * 1000)
 
-    if (!config.workflow) {
-      throw new Error(`An input to 'workflow' was not provided`)
+  try {
+    if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
+      branchName = getBranchNameFromRef(config.ref)
+
+      if (!config.workflow) {
+        throw new Error(`An input to 'workflow' was not provided`)
+      }
+      // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
+      response = await octokit.paginate(
+        octokit.rest.actions.listWorkflowRuns,
+        {
+          owner: config.owner,
+          repo: config.repo,
+          created: `>${startTime.toISOString()}`,
+          workflow_id: config.workflow,
+          ...(branchName
+            ? {
+                branch: branchName,
+                per_page: 5
+              }
+            : {
+                per_page: 10
+              })
+        },
+        resp => {
+          core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
+          return resp.data
+        }
+      )
+    } else {
+      // repository_dipsatch can only be triggered from the default branch
+      const branchName = await getDefaultBranch()
+      // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+      response = await octokit.paginate(
+        octokit.rest.actions.listWorkflowRunsForRepo,
+        {
+          owner: config.owner,
+          repo: config.repo,
+          branch: branchName,
+          created: `>${startTime.toISOString()}`,
+          event: DispatchMethod.RepositoryDispatch,
+          per_page: 5
+        },
+        resp => {
+          core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
+          return resp.data
+        }
+      )
     }
-    // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-    response = await octokit.rest.actions.listWorkflowRuns({
-      owner: config.owner,
-      repo: config.repo,
-      workflow_id: config.workflow,
-      ...(branchName
-        ? {
-            branch: branchName,
-            per_page: 5
-          }
-        : {
-            per_page: 10
-          })
-    })
-    status = response.status
-  } else {
-    // repository_dipsatch can only be triggered from the default branch
-    const branchName = await getDefaultBranch()
-    // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
-    response = await octokit.rest.actions.listWorkflowRunsForRepo({
-      owner: config.owner,
-      repo: config.repo,
-      branch: branchName,
-      event: DispatchMethod.RepositoryDispatch,
-      per_page: 5
-    })
-    status = response.status
+  } catch (error) {
+    core.error(`getWorkflowRuns: Failed to get workflow runs`)
+
+    if ((error as OctokitRequestError)?.name === `HttpError`) {
+      throw new Error(
+        `Expected 200 but received: ${(error as OctokitRequestError).status}`
+      )
+    }
+
+    throw new Error(`getWorkflowRuns: Failed to get workflow runs, ${error}`)
   }
 
-  if (status !== 200) {
-    throw new Error(
-      `getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`
-    )
-  }
-
-  const workflowRuns: WorkflowRun[] = response.data.workflow_runs.map(
-    workflowRun => ({
+  const workflowRuns: WorkflowRun[] = response.map(
+    (workflowRun: {id: number; name: string; html_url: string}) => ({
       id: workflowRun.id,
       name: workflowRun.name || '',
       htmlUrl: workflowRun.html_url

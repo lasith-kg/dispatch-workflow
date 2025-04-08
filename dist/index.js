@@ -281,7 +281,14 @@ let config;
 let octokit;
 function init(cfg) {
     config = cfg || (0, action_1.getConfig)();
-    octokit = github.getOctokit(config.token);
+    octokit = github.getOctokit(config.token, {
+        log: {
+            debug: (message) => core.debug(message),
+            info: (message) => core.info(message),
+            warn: (message) => core.warning(message),
+            error: (message) => core.error(message)
+        }
+    });
 }
 exports.init = init;
 function workflowDispatch(distinctId) {
@@ -355,44 +362,57 @@ function getWorkflowId(workflowFilename) {
     });
 }
 exports.getWorkflowId = getWorkflowId;
-function getWorkflowRuns() {
+function getWorkflowRuns(startEpoch) {
     return __awaiter(this, void 0, void 0, function* () {
-        let status;
         let branchName;
         let response;
-        if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
-            branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
-            if (!config.workflow) {
-                throw new Error(`An input to 'workflow' was not provided`);
-            }
-            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-            response = yield octokit.rest.actions.listWorkflowRuns(Object.assign({ owner: config.owner, repo: config.repo, workflow_id: config.workflow }, (branchName
-                ? {
-                    branch: branchName,
-                    per_page: 5
+        // Allow for some clock drift between CI runner and GH API
+        const startTime = new Date(startEpoch - 5 * 1000);
+        try {
+            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+                branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
+                if (!config.workflow) {
+                    throw new Error(`An input to 'workflow' was not provided`);
                 }
-                : {
-                    per_page: 10
-                })));
-            status = response.status;
+                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
+                response = yield octokit.paginate(octokit.rest.actions.listWorkflowRuns, Object.assign({ owner: config.owner, repo: config.repo, created: `>${startTime.toISOString()}`, workflow_id: config.workflow }, (branchName
+                    ? {
+                        branch: branchName,
+                        per_page: 5
+                    }
+                    : {
+                        per_page: 10
+                    })), resp => {
+                    // core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
+                    return resp.data;
+                });
+            }
+            else {
+                // repository_dipsatch can only be triggered from the default branch
+                const branchName = yield getDefaultBranch();
+                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+                response = yield octokit.paginate(octokit.rest.actions.listWorkflowRunsForRepo, {
+                    owner: config.owner,
+                    repo: config.repo,
+                    branch: branchName,
+                    created: `>${startTime.toISOString()}`,
+                    event: action_1.DispatchMethod.RepositoryDispatch,
+                    per_page: 5
+                }, resp => {
+                    // core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`)
+                    return resp.data;
+                });
+            }
         }
-        else {
-            // repository_dipsatch can only be triggered from the default branch
-            const branchName = yield getDefaultBranch();
-            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
-            response = yield octokit.rest.actions.listWorkflowRunsForRepo({
-                owner: config.owner,
-                repo: config.repo,
-                branch: branchName,
-                event: action_1.DispatchMethod.RepositoryDispatch,
-                per_page: 5
-            });
-            status = response.status;
+        catch (error) {
+            core.error(`getWorkflowRuns: Failed to get workflow runs`);
+            if ((error === null || error === void 0 ? void 0 : error.name) === `HttpError`) {
+                throw new Error(`Expected 200 but received: ${error.status}`);
+            }
+            throw new Error(`getWorkflowRuns: Failed to get workflow runs, ${error}`);
         }
-        if (status !== 200) {
-            throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`);
-        }
-        const workflowRuns = response.data.workflow_runs.map(workflowRun => ({
+        core.debug(`OSCAR2 response: ${JSON.stringify(response, null, 2)}`);
+        const workflowRuns = response.map((workflowRun) => ({
             id: workflowRun.id,
             name: workflowRun.name || '',
             htmlUrl: workflowRun.html_url
@@ -472,6 +492,7 @@ const uuid_1 = __nccwpck_require__(5840);
 const action_1 = __nccwpck_require__(6791);
 const api = __importStar(__nccwpck_require__(5614));
 const utils_1 = __nccwpck_require__(1606);
+const START_EPOCH = Date.now();
 const DISTINCT_ID = (0, uuid_1.v4)();
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -479,6 +500,7 @@ function run() {
             const config = (0, action_1.getConfig)();
             api.init(config);
             const backoffOptions = (0, action_1.getBackoffOptions)(config);
+            core.info(`OSCAR: Running with core.isDebug(): ${core.isDebug()}`);
             // Display Exponential Backoff Options (if debug mode is enabled)
             core.info(`🔄 Exponential backoff parameters:
     starting-delay: ${backoffOptions.startingDelay}
@@ -506,7 +528,7 @@ function run() {
             }
             core.info(`⌛ Fetching run-ids for workflow with distinct-id=${DISTINCT_ID}`);
             const dispatchedWorkflowRun = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () {
-                const workflowRuns = yield api.getWorkflowRuns();
+                const workflowRuns = yield api.getWorkflowRuns(START_EPOCH);
                 const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
                 return dispatchedWorkflowRun;
             }), backoffOptions);

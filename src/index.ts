@@ -10,6 +10,7 @@ import {
 import * as api from './api'
 import {getDispatchedWorkflowRun} from './utils'
 
+const START_EPOCH = Date.now()
 const DISTINCT_ID = uuid()
 
 async function run(): Promise<void> {
@@ -54,7 +55,7 @@ async function run(): Promise<void> {
     )
 
     const dispatchedWorkflowRun = await backOff(async () => {
-      const workflowRuns = await api.getWorkflowRuns()
+      const workflowRuns = await api.getWorkflowRuns(START_EPOCH)
       const dispatchedWorkflowRun = getDispatchedWorkflowRun(
         workflowRuns,
         DISTINCT_ID
