@@ -277,6 +277,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const github = __importStar(__nccwpck_require__(5438));
 const action_1 = __nccwpck_require__(6791);
 const utils_1 = __nccwpck_require__(1606);
+const request_error_1 = __nccwpck_require__(537);
 let config;
 let octokit;
 function init(cfg) {
@@ -355,44 +356,48 @@ function getWorkflowId(workflowFilename) {
     });
 }
 exports.getWorkflowId = getWorkflowId;
-function getWorkflowRuns() {
+function getWorkflowRuns(startEpoch) {
     return __awaiter(this, void 0, void 0, function* () {
-        let status;
         let branchName;
         let response;
-        if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
-            branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
-            if (!config.workflow) {
-                throw new Error(`An input to 'workflow' was not provided`);
-            }
-            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-            response = yield octokit.rest.actions.listWorkflowRuns(Object.assign({ owner: config.owner, repo: config.repo, workflow_id: config.workflow }, (branchName
-                ? {
-                    branch: branchName,
-                    per_page: 5
+        // Allow for some clock drift between CI runner and GH API
+        const startTime = new Date(startEpoch - 5 * 1000);
+        try {
+            if (config.dispatchMethod === action_1.DispatchMethod.WorkflowDispatch) {
+                branchName = (0, utils_1.getBranchNameFromRef)(config.ref);
+                if (!config.workflow) {
+                    throw new Error(`An input to 'workflow' was not provided`);
                 }
-                : {
-                    per_page: 10
-                })));
-            status = response.status;
+                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
+                response = yield octokit.paginate(octokit.rest.actions.listWorkflowRuns, Object.assign({ owner: config.owner, repo: config.repo, created: `>${startTime.toISOString()}`, workflow_id: config.workflow }, (branchName ? { branch: branchName } : {})), resp => {
+                    core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`);
+                    return resp.data;
+                });
+            }
+            else {
+                // repository_dipsatch can only be triggered from the default branch
+                const branchName = yield getDefaultBranch();
+                // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+                response = yield octokit.paginate(octokit.rest.actions.listWorkflowRunsForRepo, {
+                    owner: config.owner,
+                    repo: config.repo,
+                    branch: branchName,
+                    created: `>${startTime.toISOString()}`,
+                    event: action_1.DispatchMethod.RepositoryDispatch
+                }, resp => {
+                    core.debug(`Fetched page: ${JSON.stringify(resp, null, 2)}`);
+                    return resp.data;
+                });
+            }
         }
-        else {
-            // repository_dipsatch can only be triggered from the default branch
-            const branchName = yield getDefaultBranch();
-            // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
-            response = yield octokit.rest.actions.listWorkflowRunsForRepo({
-                owner: config.owner,
-                repo: config.repo,
-                branch: branchName,
-                event: action_1.DispatchMethod.RepositoryDispatch,
-                per_page: 5
-            });
-            status = response.status;
+        catch (error) {
+            const err = `Failed to get workflow runs.`;
+            if (error instanceof request_error_1.RequestError) {
+                throw new Error(`${err} Expected 200 but received ${error.status}`);
+            }
+            throw new Error(`${err} ${error}`);
         }
-        if (status !== 200) {
-            throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`);
-        }
-        const workflowRuns = response.data.workflow_runs.map(workflowRun => ({
+        const workflowRuns = response.map((workflowRun) => ({
             id: workflowRun.id,
             name: workflowRun.name || '',
             htmlUrl: workflowRun.html_url
@@ -472,6 +477,7 @@ const uuid_1 = __nccwpck_require__(5840);
 const action_1 = __nccwpck_require__(6791);
 const api = __importStar(__nccwpck_require__(5614));
 const utils_1 = __nccwpck_require__(1606);
+const START_EPOCH = Date.now();
 const DISTINCT_ID = (0, uuid_1.v4)();
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
@@ -506,7 +512,7 @@ function run() {
             }
             core.info(`⌛ Fetching run-ids for workflow with distinct-id=${DISTINCT_ID}`);
             const dispatchedWorkflowRun = yield (0, exponential_backoff_1.backOff)(() => __awaiter(this, void 0, void 0, function* () {
-                const workflowRuns = yield api.getWorkflowRuns();
+                const workflowRuns = yield api.getWorkflowRuns(START_EPOCH);
                 const dispatchedWorkflowRun = (0, utils_1.getDispatchedWorkflowRun)(workflowRuns, DISTINCT_ID);
                 return dispatchedWorkflowRun;
             }), backoffOptions);
@@ -5595,6 +5601,104 @@ function checkBypass(reqUrl) {
 }
 exports.checkBypass = checkBypass;
 //# sourceMappingURL=proxy.js.map
+
+/***/ }),
+
+/***/ 537:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+"use strict";
+
+var __create = Object.create;
+var __defProp = Object.defineProperty;
+var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
+var __getOwnPropNames = Object.getOwnPropertyNames;
+var __getProtoOf = Object.getPrototypeOf;
+var __hasOwnProp = Object.prototype.hasOwnProperty;
+var __export = (target, all) => {
+  for (var name in all)
+    __defProp(target, name, { get: all[name], enumerable: true });
+};
+var __copyProps = (to, from, except, desc) => {
+  if (from && typeof from === "object" || typeof from === "function") {
+    for (let key of __getOwnPropNames(from))
+      if (!__hasOwnProp.call(to, key) && key !== except)
+        __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
+  }
+  return to;
+};
+var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
+  // If the importer is in node compatibility mode or this is not an ESM
+  // file that has been converted to a CommonJS file using a Babel-
+  // compatible transform (i.e. "__esModule" has not been set), then set
+  // "default" to the CommonJS "module.exports" for node compatibility.
+  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
+  mod
+));
+var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
+
+// pkg/dist-src/index.js
+var dist_src_exports = {};
+__export(dist_src_exports, {
+  RequestError: () => RequestError
+});
+module.exports = __toCommonJS(dist_src_exports);
+var import_deprecation = __nccwpck_require__(8932);
+var import_once = __toESM(__nccwpck_require__(1223));
+var logOnceCode = (0, import_once.default)((deprecation) => console.warn(deprecation));
+var logOnceHeaders = (0, import_once.default)((deprecation) => console.warn(deprecation));
+var RequestError = class extends Error {
+  constructor(message, statusCode, options) {
+    super(message);
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
+    this.name = "HttpError";
+    this.status = statusCode;
+    let headers;
+    if ("headers" in options && typeof options.headers !== "undefined") {
+      headers = options.headers;
+    }
+    if ("response" in options) {
+      this.response = options.response;
+      headers = options.response.headers;
+    }
+    const requestCopy = Object.assign({}, options.request);
+    if (options.request.headers.authorization) {
+      requestCopy.headers = Object.assign({}, options.request.headers, {
+        authorization: options.request.headers.authorization.replace(
+          / .*$/,
+          " [REDACTED]"
+        )
+      });
+    }
+    requestCopy.url = requestCopy.url.replace(/\bclient_secret=\w+/g, "client_secret=[REDACTED]").replace(/\baccess_token=\w+/g, "access_token=[REDACTED]");
+    this.request = requestCopy;
+    Object.defineProperty(this, "code", {
+      get() {
+        logOnceCode(
+          new import_deprecation.Deprecation(
+            "[@octokit/request-error] `error.code` is deprecated, use `error.status`."
+          )
+        );
+        return statusCode;
+      }
+    });
+    Object.defineProperty(this, "headers", {
+      get() {
+        logOnceHeaders(
+          new import_deprecation.Deprecation(
+            "[@octokit/request-error] `error.headers` is deprecated, use `error.response.headers`."
+          )
+        );
+        return headers || {};
+      }
+    });
+  }
+};
+// Annotate the CommonJS export names for ESM import in node:
+0 && (0);
+
 
 /***/ }),
 
