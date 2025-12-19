@@ -85,7 +85,32 @@ describe('API', () => {
       init(mockActionConfig)
     })
 
-    it('should resolve after a successful dispatch', async () => {
+    // GitHub released a breaking change to the createWorkflowDispatch API that resulted in a change where the returned
+    // status code changed to 200, from 204.
+    //
+    // Given that we are in an interim state where the API behaviour, but the public documentation has not been updated
+    // to reflect this change, and GitHub has not yet released any updates on this topic. I can going to play the safe
+    // route and assume that the response status code could be either 200 or 204. I've added a test case that supports both
+    // potential status codes.
+    //
+    // Reference:     https://github.com/orgs/community/discussions/9752#discussioncomment-15295321
+    // Documentation: https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+    it('should resolve after a successful dispatch with a 200 status', async () => {
+      jest
+        .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
+        .mockReturnValue(
+          Promise.resolve({
+            headers: null,
+            url: '',
+            data: undefined,
+            status: 200
+          })
+        )
+
+      await workflowDispatch('')
+    })
+
+    it('should resolve after a successful dispatch with a 204 status', async () => {
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         .mockReturnValue(
@@ -112,7 +137,7 @@ describe('API', () => {
         )
 
       await expect(workflowDispatch('')).rejects.toThrow(
-        `Failed to dispatch action, expected 204 but received ${errorStatus}`
+        `Failed to dispatch action, expected 200 or 204 but received ${errorStatus}`
       )
     })
 
@@ -126,7 +151,7 @@ describe('API', () => {
 
           return {
             data: undefined,
-            status: 204
+            status: 200
           }
         })
 
@@ -147,7 +172,7 @@ describe('API', () => {
 
           return {
             data: undefined,
-            status: 204
+            status: 200
           }
         })
 
