@@ -23,7 +23,7 @@ From a **compatibility** and **performance** perspective, this GitHub Action sup
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v1
+  - uses: lasith-kg/dispatch-workflow@v2
     id: workflow-dispatch
     name: 'Dispatch Workflow using workflow_dispatch Method'
     with:
@@ -45,7 +45,7 @@ steps:
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v1
+  - uses: lasith-kg/dispatch-workflow@v2
     id: repository-dispatch
     name: 'Dispatch Workflow using repository_dispatch Method'
     with:
@@ -126,7 +126,7 @@ This functionality is **disabled by default**, but can be enabled with the `disc
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v1
+  - uses: lasith-kg/dispatch-workflow@v2
     id: dispatch-with-discovery
     name: "Dispatch Workflow With Discovery"
     with:
@@ -230,7 +230,7 @@ By default, this GitHub Action has no outputs. However, when discovery mode is *
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v1
+  - uses: lasith-kg/dispatch-workflow@v2
     id: wait-repository-dispatch
     name: 'Dispatch Using repository_dispatch Method And Wait For Run-ID'
     with:
@@ -292,7 +292,7 @@ types must be wrapped in **quotes** to successfully dispatch the workflow.
 
 ```yaml
 # Invalid ❌
-  - uses: lasith-kg/dispatch-workflow@v1
+  - uses: lasith-kg/dispatch-workflow@v2
     id: workflow-dispatch
     name: 'Dispatch Using workflow_dispatch Method'
     with:
@@ -305,7 +305,7 @@ types must be wrapped in **quotes** to successfully dispatch the workflow.
         }
 
 # Valid 🟢
-  - uses: lasith-kg/dispatch-workflow@v1
+  - uses: lasith-kg/dispatch-workflow@v2
     id: workflow-dispatch
     name: 'Dispatch Using workflow_dispatch Method'
     with:
@@ -329,7 +329,7 @@ When interacting with the GitHub REST API, it's beneficial to handle potential f
 - `time-multiple`: The factor by which the `starting-delay-ms` is multiplied for each reattempt, influencing the delay duration.
 
 ```yaml
-  - uses: lasith-kg/dispatch-workflow@v1
+  - uses: lasith-kg/dispatch-workflow@v2
     id: custom-backoff
     name: 'Dispatch with custom exponential backoff parameters'
     with:
