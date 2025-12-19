@@ -3,6 +3,7 @@ import * as github from '@actions/github'
 import {getConfig, ActionConfig, DispatchMethod} from '../action'
 import {getBranchNameFromRef} from '../utils'
 import {Octokit, WorkflowRun, WorkflowRunResponse} from './api.types'
+import type {OctokitResponse} from '@octokit/types'
 
 let config: ActionConfig
 let octokit: Octokit
@@ -25,18 +26,26 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
   if (!config.ref) {
     throw new Error(`workflow_dispatch: An input to 'ref' was not provided`)
   }
-  // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-  const response = await octokit.rest.actions.createWorkflowDispatch({
+  // GitHub released a breaking change to the createWorkflowDispatch API that resulted in a change where the returned
+  // status code changed to 200, from 204. At the time, the @octokit/types had not been updated to reflect this change.
+  //
+  // Given that we are in an interim state where the API behaviour, but the public documentation has not been updated
+  // to reflect this change, and GitHub has not yet released any updates on this topic. I can going to play the safe
+  // route and assume that the response status code could be either 200 or 204.
+  //
+  // Reference:     https://github.com/orgs/community/discussions/9752#discussioncomment-15295321
+  // Documentation: https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+  const response = (await octokit.rest.actions.createWorkflowDispatch({
     owner: config.owner,
     repo: config.repo,
     workflow_id: config.workflow,
     ref: config.ref,
     inputs
-  })
+  })) as OctokitResponse<never, 204 | 200>
 
-  if (response.status !== 204) {
+  if (response.status !== 200 && response.status !== 204) {
     throw new Error(
-      `workflow_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`
+      `workflow_dispatch: Failed to dispatch action, expected 200 or 204 but received ${response.status}`
     )
   }
 
