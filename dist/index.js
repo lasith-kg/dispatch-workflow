@@ -68,10 +68,7 @@ const core = __importStar(__nccwpck_require__(2186));
 const action_types_1 = __nccwpck_require__(313);
 function getNumberFromValue(value) {
     const num = parseFloat(value);
-    if (isNaN(num)) {
-        return undefined;
-    }
-    return num;
+    return isNaN(num) ? undefined : num;
 }
 function getWorkflowIdFromValue(value) {
     // Only treat as a workflow ID if the entire string is a positive integer

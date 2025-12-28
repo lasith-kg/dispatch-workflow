@@ -9,10 +9,7 @@ import {BackoffOptions} from 'exponential-backoff'
 
 function getNumberFromValue(value: string): number | undefined {
   const num = parseFloat(value)
-  if (isNaN(num)) {
-    return undefined
-  }
-  return num
+  return isNaN(num) ? undefined : num
 }
 
 function getWorkflowIdFromValue(value: string): number | undefined {
