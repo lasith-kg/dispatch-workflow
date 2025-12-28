@@ -8,15 +8,18 @@ import {
 import {BackoffOptions} from 'exponential-backoff'
 
 function getNumberFromValue(value: string): number | undefined {
-  try {
-    const num = parseFloat(value)
-    if (isNaN(num)) {
-      throw new Error(`${value}: Parsed value is NaN`)
-    }
-    return num
-  } catch {
+  const num = parseFloat(value)
+  return isNaN(num) ? undefined : num
+}
+
+function getWorkflowIdFromValue(value: string): number | undefined {
+  // Only treat as a workflow ID if the entire string is a positive integer
+  // This prevents filenames like "1-release.yaml" from being parsed as workflow ID 1
+  if (!/^\d+$/.test(value)) {
     return undefined
   }
+  const num = parseInt(value, 10)
+  return isNaN(num) ? undefined : num
 }
 
 function getWorkflowInputs(
@@ -134,7 +137,7 @@ The 'workflow' input is not supported for the repository_dispatch method and mus
   }
 
   if (dispatchMethod === DispatchMethod.WorkflowDispatch) {
-    return getNumberFromValue(workflow) || workflow
+    return getWorkflowIdFromValue(workflow) || workflow
   }
   return undefined
 }

@@ -139,6 +139,13 @@ describe('Action', () => {
 
         expect(config.workflow).toStrictEqual(123456)
       })
+
+      test('Should treat workflow filename starting with a number as a string, not a workflow ID', () => {
+        mockGitHubConfig.workflow = '1-release.yaml'
+        const config: ActionConfig = getConfig()
+
+        expect(config.workflow).toStrictEqual('1-release.yaml')
+      })
     })
 
     describe('repositoryDispatch', () => {
