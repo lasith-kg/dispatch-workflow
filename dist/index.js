@@ -67,16 +67,20 @@ exports.getBackoffOptions = exports.getConfig = void 0;
 const core = __importStar(__nccwpck_require__(2186));
 const action_types_1 = __nccwpck_require__(313);
 function getNumberFromValue(value) {
-    try {
-        const num = parseFloat(value);
-        if (isNaN(num)) {
-            throw new Error(`${value}: Parsed value is NaN`);
-        }
-        return num;
-    }
-    catch (_a) {
+    const num = parseFloat(value);
+    if (isNaN(num)) {
         return undefined;
     }
+    return num;
+}
+function getWorkflowIdFromValue(value) {
+    // Only treat as a workflow ID if the entire string is a positive integer
+    // This prevents filenames like "1-release.yaml" from being parsed as workflow ID 1
+    if (!/^\d+$/.test(value)) {
+        return undefined;
+    }
+    const num = parseInt(value, 10);
+    return isNaN(num) ? undefined : num;
 }
 function getWorkflowInputs(dispatchMethod) {
     const workflowInputs = core.getInput('workflow-inputs');
@@ -182,7 +186,7 @@ The 'workflow' input is not supported for the repository_dispatch method and mus
         throw error;
     }
     if (dispatchMethod === action_types_1.DispatchMethod.WorkflowDispatch) {
-        return getNumberFromValue(workflow) || workflow;
+        return getWorkflowIdFromValue(workflow) || workflow;
     }
     return undefined;
 }
