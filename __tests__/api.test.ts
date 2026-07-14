@@ -126,20 +126,33 @@ describe('API', () => {
       })
     })
 
-    it('should throw if a non-200 status is returned', async () => {
-      const errorStatus = 401
+    // On instances where `return_run_details` is not honoured (older API versions / outdated GitHub Enterprise
+    // Server), createWorkflowDispatch falls back to its legacy 204 response, which Octokit resolves rather than
+    // throwing. The 200 guard turns that into a clear error instead of silently returning an undefined run ID.
+    it('should throw if a 204 status is returned because return_run_details was not honoured', async () => {
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         .mockReturnValue(
           Promise.resolve({
-            data: undefined,
-            status: errorStatus
+            data: '',
+            status: 204
           })
         )
 
       await expect(workflowDispatch()).rejects.toThrow(
-        `Failed to dispatch action, expected 200 but received ${errorStatus}`
+        `Failed to dispatch action, expected 200 but received 204`
       )
+    })
+
+    // Octokit throws (rejects) for any status >= 400 rather than resolving with it. This test locks in that we let
+    // such errors propagate instead of swallowing them.
+    it('should propagate an error thrown by Octokit', async () => {
+      const error = new Error('createWorkflowDispatch failed')
+      jest
+        .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
+        .mockRejectedValue(error)
+
+      await expect(workflowDispatch()).rejects.toThrow(error)
     })
 
     // Regression test: returning run details currently requires explicitly passing `return_run_details: true`. From the
@@ -208,18 +221,15 @@ describe('API', () => {
       await repositoryDispatch('')
     })
 
-    it('should throw if a non-204 status is returned', async () => {
-      const errorStatus = 422
-      jest.spyOn(mockOctokit.rest.repos, 'createDispatchEvent').mockReturnValue(
-        Promise.resolve({
-          data: undefined,
-          status: errorStatus
-        })
-      )
+    // Octokit throws (rejects) for any status >= 400 rather than resolving with it, so there is no non-204 resolved
+    // response to guard against. This test locks in that we let such errors propagate instead of swallowing them.
+    it('should propagate an error thrown by Octokit', async () => {
+      const error = new Error('repository_dispatch failed')
+      jest
+        .spyOn(mockOctokit.rest.repos, 'createDispatchEvent')
+        .mockRejectedValue(error)
 
-      await expect(repositoryDispatch('')).rejects.toThrow(
-        `Failed to dispatch action, expected 204 but received ${errorStatus}`
-      )
+      await expect(repositoryDispatch('')).rejects.toThrow(error)
     })
 
     it('should dispatch with a distinctId in the inputs', async () => {
@@ -304,18 +314,15 @@ describe('API', () => {
       )
     })
 
-    it('should throw if a non-200 status is returned', async () => {
-      const errorStatus = 401
-      jest.spyOn(mockOctokit.rest.actions, 'listRepoWorkflows').mockReturnValue(
-        Promise.resolve({
-          data: undefined,
-          status: errorStatus
-        })
-      )
+    // Octokit throws (rejects) for any status >= 400 rather than resolving with it. This test locks in that we let
+    // such errors propagate instead of swallowing them.
+    it('should propagate an error thrown by Octokit', async () => {
+      const error = new Error('listRepoWorkflows failed')
+      jest
+        .spyOn(mockOctokit.rest.actions, 'listRepoWorkflows')
+        .mockRejectedValue(error)
 
-      await expect(getWorkflowId('implode')).rejects.toThrow(
-        `Failed to get workflows, expected 200 but received ${errorStatus}`
-      )
+      await expect(getWorkflowId('implode')).rejects.toThrow(error)
     })
 
     it('should throw if a given workflow name cannot be found in the response', async () => {
@@ -350,18 +357,13 @@ describe('API', () => {
       expect(await getDefaultBranch()).toStrictEqual('main')
     })
 
-    it('should throw if a non-200 status is returned', async () => {
-      const errorStatus = 404
-      jest.spyOn(mockOctokit.rest.repos, 'get').mockReturnValue(
-        Promise.resolve({
-          data: undefined,
-          status: errorStatus
-        })
-      )
+    // Octokit throws (rejects) for any status >= 400 rather than resolving with it. This test locks in that we let
+    // such errors propagate instead of swallowing them.
+    it('should propagate an error thrown by Octokit', async () => {
+      const error = new Error('repos.get failed')
+      jest.spyOn(mockOctokit.rest.repos, 'get').mockRejectedValue(error)
 
-      await expect(getDefaultBranch()).rejects.toThrow(
-        `Failed to get repository information, expected 200 but received ${errorStatus}`
-      )
+      await expect(getDefaultBranch()).rejects.toThrow(error)
     })
   })
 
@@ -413,21 +415,15 @@ describe('API', () => {
       expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
     })
 
-    it('should throw if a non-200 status is returned', async () => {
-      const errorStatus = 404
-
+    // Octokit throws (rejects) for any status >= 400 rather than resolving with it. This test locks in that we let
+    // such errors propagate instead of swallowing them.
+    it('should propagate an error thrown by Octokit', async () => {
+      const error = new Error('listWorkflowRunsForRepo failed')
       jest
         .spyOn(mockOctokit.rest.actions, 'listWorkflowRunsForRepo')
-        .mockReturnValue(
-          Promise.resolve({
-            data: undefined,
-            status: errorStatus
-          })
-        )
+        .mockRejectedValue(error)
 
-      await expect(getWorkflowRuns()).rejects.toThrow(
-        `Failed to get workflow runs, expected 200 but received ${errorStatus}`
-      )
+      await expect(getWorkflowRuns()).rejects.toThrow(error)
     })
   })
 })

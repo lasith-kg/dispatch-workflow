@@ -34279,6 +34279,9 @@ async function workflowDispatch() {
         inputs,
         return_run_details: true
     }));
+    // On instances where `return_run_details` is not honoured (outdated GitHub Enterprise Server),
+    // this endpoint falls back to its legacy `204 No Content` response, which Octokit resolves rather than throwing.
+    // Without this check we would silently return an undefined run ID and html_url.
     if (response.status !== 200) {
         throw new Error(`workflow_dispatch: Failed to dispatch action, expected 200 but received ${response.status}`);
     }
@@ -34301,15 +34304,12 @@ async function repositoryDispatch(distinctId) {
         throw new Error(`repository_dispatch: An input to 'event-type' was not provided`);
     }
     // https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-    const response = await octokit.rest.repos.createDispatchEvent({
+    await octokit.rest.repos.createDispatchEvent({
         owner: config.owner,
         repo: config.repo,
         event_type: config.eventType,
         client_payload: clientPayload
     });
-    if (response.status !== 204) {
-        throw new Error(`repository_dispatch: Failed to dispatch action, expected 204 but received ${response.status}`);
-    }
     info(`✅ Successfully dispatched workflow using repository_dispatch method:
     repository: ${config.owner}/${config.repo}
     event-type: ${config.eventType}
@@ -34322,9 +34322,6 @@ async function getWorkflowId(workflowFilename) {
         owner: config.owner,
         repo: config.repo
     });
-    if (response.status !== 200) {
-        throw new Error(`Failed to get workflows, expected 200 but received ${response.status}`);
-    }
     const workflow = response.data.workflows.find((workflow) => workflow.path.includes(workflowFilename));
     if (!workflow) {
         throw new Error(`getWorkflowId: Unable to find ID for Workflow: ${workflowFilename}`);
@@ -34345,9 +34342,6 @@ async function getWorkflowRuns() {
         event: DispatchMethod.RepositoryDispatch,
         per_page: 5
     });
-    if (response.status !== 200) {
-        throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${response.status}`);
-    }
     const workflowRuns = response.data.workflow_runs.map((workflowRun) => ({
         id: workflowRun.id,
         name: workflowRun.name || '',
@@ -34365,9 +34359,6 @@ async function getDefaultBranch() {
         owner: config.owner,
         repo: config.repo
     });
-    if (response.status !== 200) {
-        throw new Error(`getDefaultBranch: Failed to get repository information, expected 200 but received ${response.status}`);
-    }
     debug(`
 Fetched Repository Information
 Repository: ${config.owner}/${config.repo}
