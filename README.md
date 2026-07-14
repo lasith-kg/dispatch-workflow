@@ -133,17 +133,9 @@ jobs:
 
 ## Discovery
 
-One of the drawbacks with both dispatch methods, is that they do not natively
-return a Run ID that allows us to query for the status of our dispatched
-workflow. This technical limitation is discussed more in-depth in this
-[community discussion](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203).
-We can work around this by encorporating a **Distinct ID** into our dispatch
-event. We then have the ability to **discover** the dispatched workflow, from
-all workflow runs, by correlating it to the **Distinct ID**.
-
-This functionality is **disabled by default**, but can be enabled with the
-`discover: true` configuration. The receiving workflow must then be modified to
-intercept the **Distinct ID**.
+Workflow discovery is **disabled by default**, but can be enabled with the
+`discover: true` configuration. When enabled for `repository_dispatch`, the
+receiving workflow must be modified to intercept the **Distinct ID**.
 
 ### Creating Dispatch Events with Discovery
 
