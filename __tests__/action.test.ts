@@ -1,16 +1,17 @@
-import * as core from '@actions/core'
-import {
-  jest,
-  expect,
-  test,
-  describe,
-  beforeEach,
-  afterEach
-} from '@jest/globals'
-import {getBackoffOptions, getConfig} from '.'
-import {ActionConfig, DispatchMethod, ExponentialBackoff} from './action.types'
+/**
+ * Unit tests for the action's configuration parsing, src/action/index.ts
+ *
+ * To mock dependencies in ESM, mocks are declared via jest.unstable_mockModule
+ * before the module being tested is imported dynamically.
+ */
+import { jest, expect, test, describe, beforeEach } from '@jest/globals'
+import * as core from '../__fixtures__/core.js'
+import type { ActionConfig } from '../src/action/action.types.js'
 
-jest.mock('@actions/core')
+jest.unstable_mockModule('@actions/core', () => core)
+
+const { getConfig, getBackoffOptions, DispatchMethod, ExponentialBackoff } =
+  await import('../src/action/index.js')
 
 describe('Action', () => {
   const workflowInputs = {
@@ -18,10 +19,11 @@ describe('Action', () => {
   }
 
   describe('getConfig', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let mockGitHubConfig: any
 
     beforeEach(() => {
-      jest.spyOn(core, 'getInput').mockImplementation((input: string) => {
+      core.getInput.mockImplementation((input: string) => {
         switch (input) {
           case 'dispatch-method':
             return mockGitHubConfig.dispatchMethod
@@ -50,20 +52,14 @@ describe('Action', () => {
         }
       })
 
-      jest
-        .spyOn(core, 'getBooleanInput')
-        .mockImplementation((input: string) => {
-          switch (input) {
-            case 'discover':
-              return mockGitHubConfig.discover
-            default:
-              throw new Error('invalid input requested')
-          }
-        })
-    })
-
-    afterEach(() => {
-      jest.restoreAllMocks()
+      core.getBooleanInput.mockImplementation((input: string) => {
+        switch (input) {
+          case 'discover':
+            return mockGitHubConfig.discover
+          default:
+            throw new Error('invalid input requested')
+        }
+      })
     })
 
     describe('workflowDispatch', () => {
@@ -106,31 +102,31 @@ describe('Action', () => {
       test('Should throw an error if a ref is not provided', () => {
         mockGitHubConfig.ref = ''
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should throw an error if an event-type is provided', () => {
         mockGitHubConfig.eventType = 'deploy'
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should throw an error if no workflow is provided', () => {
         mockGitHubConfig.workflow = ''
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should throw an error if workflowInputs contains a non-string value', () => {
         mockGitHubConfig.workflowInputs = JSON.stringify({
           hello: false
         })
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
 
         mockGitHubConfig.workflowInputs = JSON.stringify({
           hello: 0
         })
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should have a number for a workflow when given a workflow ID', () => {
@@ -185,19 +181,19 @@ describe('Action', () => {
       test('Should throw an error if a ref is provided', () => {
         mockGitHubConfig.ref = 'feature_branch'
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should throw an error if no event-type is provided', () => {
         mockGitHubConfig.eventType = ''
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should throw an error if a workflow is provided', () => {
         mockGitHubConfig.workflow = 'workflow.yml'
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
     })
 
@@ -222,7 +218,7 @@ describe('Action', () => {
       test('Should throw if unsuported dispatch method is provided', () => {
         mockGitHubConfig.dispatchMethod = 'unsupported_dispatch_method'
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should return an empty client payload if none is supplied', () => {
@@ -235,7 +231,7 @@ describe('Action', () => {
       test('Should throw if invalid workflow inputs JSON is provided', () => {
         mockGitHubConfig.workflowInputs = '{'
 
-        expect(() => getConfig()).toThrowError()
+        expect(() => getConfig()).toThrow()
       })
 
       test('Should fall back on default starting delay, if non-numeric value is provided', () => {

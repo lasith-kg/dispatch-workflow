@@ -1,9 +1,7 @@
-import type {GitHub} from '@actions/github/lib/utils'
-// eslint-disable-next-line import/no-unresolved
-import {GetResponseTypeFromEndpointMethod} from '@octokit/types'
+import type { getOctokit } from '@actions/github'
+import type { GetResponseTypeFromEndpointMethod } from '@octokit/types'
 
-export type Octokit = InstanceType<typeof GitHub>
-let octokit: Octokit
+export type Octokit = ReturnType<typeof getOctokit>
 
 export interface WorkflowRun {
   id: number
@@ -12,5 +10,5 @@ export interface WorkflowRun {
 }
 
 export type WorkflowRunResponse = GetResponseTypeFromEndpointMethod<
-  typeof octokit.rest.actions.listWorkflowRuns
+  Octokit['rest']['actions']['listWorkflowRuns']
 >

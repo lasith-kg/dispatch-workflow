@@ -1,9 +1,9 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
-import {getConfig, ActionConfig, DispatchMethod} from '../action'
-import {getBranchNameFromRef} from '../utils'
-import {Octokit, WorkflowRun, WorkflowRunResponse} from './api.types'
-import type {OctokitResponse} from '@octokit/types'
+import { getConfig, ActionConfig, DispatchMethod } from '../action/index.js'
+import { getBranchNameFromRef } from '../utils/index.js'
+import { Octokit, WorkflowRun, WorkflowRunResponse } from './api.types.js'
+import type { OctokitResponse } from '@octokit/types'
 
 let config: ActionConfig
 let octokit: Octokit
@@ -16,7 +16,7 @@ export function init(cfg?: ActionConfig): void {
 export async function workflowDispatch(distinctId: string): Promise<void> {
   const inputs = {
     ...config.workflowInputs,
-    ...(config.discover ? {distinct_id: distinctId} : undefined)
+    ...(config.discover ? { distinct_id: distinctId } : undefined)
   }
   if (!config.workflow) {
     throw new Error(
@@ -60,7 +60,7 @@ export async function workflowDispatch(distinctId: string): Promise<void> {
 export async function repositoryDispatch(distinctId: string): Promise<void> {
   const clientPayload = {
     ...config.workflowInputs,
-    ...(config.discover ? {distinct_id: distinctId} : undefined)
+    ...(config.discover ? { distinct_id: distinctId } : undefined)
   }
   if (!config.eventType) {
     throw new Error(
@@ -101,7 +101,7 @@ export async function getWorkflowId(workflowFilename: string): Promise<number> {
     )
   }
 
-  const workflow = response.data.workflows.find(workflow =>
+  const workflow = response.data.workflows.find((workflow) =>
     workflow.path.includes(workflowFilename)
   )
 
@@ -161,7 +161,7 @@ export async function getWorkflowRuns(): Promise<WorkflowRun[]> {
   }
 
   const workflowRuns: WorkflowRun[] = response.data.workflow_runs.map(
-    workflowRun => ({
+    (workflowRun) => ({
       id: workflowRun.id,
       name: workflowRun.name || '',
       htmlUrl: workflowRun.html_url
@@ -172,7 +172,7 @@ export async function getWorkflowRuns(): Promise<WorkflowRun[]> {
 Fetched Workflow Runs
 Repository: ${config.owner}/${config.repo}
 Branch: ${branchName || 'undefined'}
-Runs Fetched: [${workflowRuns.map(workflowRun => workflowRun.id)}]`)
+Runs Fetched: [${workflowRuns.map((workflowRun) => workflowRun.id)}]`)
 
   return workflowRuns
 }
@@ -197,4 +197,4 @@ Default Branch: ${response.data.default_branch}`)
   return response.data.default_branch
 }
 
-export * from './api.types'
+export * from './api.types.js'

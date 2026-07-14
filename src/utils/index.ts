@@ -1,5 +1,5 @@
 import * as core from '@actions/core'
-import {WorkflowRun} from '../api'
+import type { WorkflowRun } from '../api/api.types.js'
 
 function getBranchNameFromHeadRef(ref: string): string | undefined {
   const refItems = ref.split(/\/?refs\/heads\//)
@@ -43,7 +43,7 @@ export function getDispatchedWorkflowRun(
   workflowRuns: WorkflowRun[],
   distinctID: string
 ): WorkflowRun {
-  const dispatchedWorkflow = workflowRuns.find(workflowRun =>
+  const dispatchedWorkflow = workflowRuns.find((workflowRun) =>
     workflowRun.name.includes(distinctID)
   )
   if (dispatchedWorkflow) {

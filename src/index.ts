@@ -1,16 +1,16 @@
 import * as core from '@actions/core'
-import {backOff} from 'exponential-backoff'
-import {v4 as uuid} from 'uuid'
+import { backOff } from 'exponential-backoff'
+import { randomUUID } from 'node:crypto'
 import {
   getConfig,
   DispatchMethod,
   ActionOutputs,
   getBackoffOptions
-} from './action'
-import * as api from './api'
-import {getDispatchedWorkflowRun} from './utils'
+} from './action/index.js'
+import * as api from './api/index.js'
+import { getDispatchedWorkflowRun } from './utils/index.js'
 
-const DISTINCT_ID = uuid()
+const DISTINCT_ID = randomUUID()
 
 async function run(): Promise<void> {
   try {
@@ -70,7 +70,9 @@ async function run(): Promise<void> {
   } catch (error) {
     if (error instanceof Error) {
       core.warning('🟠 Does the token have the correct permissions?')
-      error.stack && core.debug(error.stack)
+      if (error.stack) {
+        core.debug(error.stack)
+      }
       core.setFailed(`🔴 Failed to complete: ${error.message}`)
     }
   }

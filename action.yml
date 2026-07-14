@@ -1,12 +1,16 @@
 name: 'Dispatch Workflow'
-description: 'A GitHub action to dispatch a remote GitHub workflow and optionally retrieve its information'
+description:
+  'A GitHub action to dispatch a remote GitHub workflow and optionally retrieve
+  its information'
 branding:
   icon: chevrons-right
   color: black
 inputs:
   dispatch-method:
     required: true
-    description: 'The method that will be used for dispatching GitHub workflows: repository_dispatch, workflow_dispatch.'
+    description:
+      'The method that will be used for dispatching GitHub workflows:
+      repository_dispatch, workflow_dispatch.'
   repo:
     description: 'Repository of the workflow to dispatch.'
     required: true
@@ -18,35 +22,49 @@ inputs:
     required: true
   ref:
     description: >
-      'If the selected dispatch method is workflow_dispatch, the git reference for the workflow.
+      'If the selected dispatch method is workflow_dispatch, the git reference
+      for the workflow.
        The reference can be a branch or tag name.'
     required: false
   workflow:
-    description: 'If the selected dispatch method is workflow_dispatch, the ID or the workflow file name to dispatch.'
+    description:
+      'If the selected dispatch method is workflow_dispatch, the ID or the
+      workflow file name to dispatch.'
     required: false
   event-type:
     required: false
-    description: 'If the selected dispatch method is repository_dispatch, what event type will be triggered in the repository.'
+    description:
+      'If the selected dispatch method is repository_dispatch, what event type
+      will be triggered in the repository.'
   workflow-inputs:
-    description: 'A JSON object that contains extra information that will be provided to the dispatch call.'
+    description:
+      'A JSON object that contains extra information that will be provided to
+      the dispatch call.'
     required: false
     default: '{}'
   discover:
-    description: 'A flag to enable the discovery of the Run ID from the dispatched workflow.'
+    description:
+      'A flag to enable the discovery of the Run ID from the dispatched
+      workflow.'
     required: false
     default: 'false'
   starting-delay-ms:
-    description: The delay, in milliseconds, before executing the function for the first time.
+    description:
+      The delay, in milliseconds, before executing the function for the first
+      time.
     required: false
     default: 200
   max-attempts:
-    description: The maximum number of times to attempt read-only GitHub API requests.
+    description:
+      The maximum number of times to attempt read-only GitHub API requests.
     required: false
     default: 5
   time-multiple:
-    description: The starting-delay-ms is multiplied by the time-multiple to increase the delay between reattempts.
+    description:
+      The starting-delay-ms is multiplied by the time-multiple to increase the
+      delay between reattempts.
     required: false
     default: 2
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'

@@ -1,19 +1,31 @@
-import * as github from '@actions/github'
-import {v4 as uuid} from 'uuid'
-import {afterEach, beforeEach, describe, expect, it, jest} from '@jest/globals'
-import {
+/**
+ * Unit tests for the action's GitHub API layer, src/api/index.ts
+ *
+ * To mock dependencies in ESM, mocks are declared via jest.unstable_mockModule
+ * before the module being tested is imported dynamically.
+ */
+import { beforeEach, describe, expect, it, jest } from '@jest/globals'
+import { randomUUID } from 'node:crypto'
+import * as core from '../__fixtures__/core.js'
+import * as github from '../__fixtures__/github.js'
+import type { ActionConfig } from '../src/action/action.types.js'
+
+jest.unstable_mockModule('@actions/core', () => core)
+jest.unstable_mockModule('@actions/github', () => github)
+
+const {
   workflowDispatch,
   getWorkflowId,
   init,
   repositoryDispatch,
   getDefaultBranch,
   getWorkflowRuns
-} from '.'
-import {ActionConfig, DispatchMethod, ExponentialBackoff} from '../action'
-
-jest.mock('@actions/core')
+} = await import('../src/api/index.js')
+const { DispatchMethod, ExponentialBackoff } =
+  await import('../src/action/index.js')
 
 interface MockResponse {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   data: any
   status: number
 }
@@ -21,23 +33,29 @@ interface MockResponse {
 const mockOctokit = {
   rest: {
     actions: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
       createWorkflowDispatch: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
       listRepoWorkflows: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
       listWorkflowRuns: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
       listWorkflowRunsForRepo: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
       }
     },
     repos: {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
       get: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
       },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
       createDispatchEvent: async (_req?: any): Promise<MockResponse> => {
         throw new Error('Should be mocked')
       }
@@ -68,12 +86,10 @@ describe('API', () => {
       timeMultiple: ExponentialBackoff.TimeMultiple
     }
 
-    jest.spyOn(github, 'getOctokit').mockReturnValue(mockOctokit as any)
+    github.getOctokit.mockReturnValue(
+      mockOctokit as unknown as ReturnType<typeof github.getOctokit>
+    )
     init(mockActionConfig)
-  })
-
-  afterEach(() => {
-    jest.restoreAllMocks()
   })
 
   describe('workflowDispatch', () => {
@@ -100,8 +116,6 @@ describe('API', () => {
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         .mockReturnValue(
           Promise.resolve({
-            headers: null,
-            url: '',
             data: undefined,
             status: 200
           })
@@ -115,8 +129,6 @@ describe('API', () => {
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         .mockReturnValue(
           Promise.resolve({
-            headers: null,
-            url: '',
             data: undefined,
             status: 204
           })
@@ -142,10 +154,11 @@ describe('API', () => {
     })
 
     it('should dispatch with a distinctId in the inputs', async () => {
-      const distinctId = uuid()
+      const distinctId = randomUUID()
       let dispatchedId: string | undefined
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockImplementation(async (req?: any) => {
           dispatchedId = req.inputs.distinct_id
 
@@ -163,10 +176,11 @@ describe('API', () => {
       mockActionConfig.discover = false
       init(mockActionConfig)
 
-      const distinctId = uuid()
+      const distinctId = randomUUID()
       let dispatchedId: string | undefined
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockImplementation(async (req?: any) => {
           dispatchedId = req.inputs.distinct_id
 
@@ -234,10 +248,11 @@ describe('API', () => {
     })
 
     it('should dispatch with a distinctId in the inputs', async () => {
-      const distinctId = uuid()
+      const distinctId = randomUUID()
       let dispatchedId: string | undefined
       jest
         .spyOn(mockOctokit.rest.repos, 'createDispatchEvent')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockImplementation(async (req?: any) => {
           dispatchedId = req.client_payload.distinct_id
 
@@ -255,10 +270,11 @@ describe('API', () => {
       mockActionConfig.discover = false
       init(mockActionConfig)
 
-      const distinctId = uuid()
+      const distinctId = randomUUID()
       let dispatchedId: string | undefined
       jest
         .spyOn(mockOctokit.rest.repos, 'createDispatchEvent')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockImplementation(async (req?: any) => {
           dispatchedId = req.client_payload.distinct_id
 
@@ -513,7 +529,7 @@ describe('API', () => {
             })
           )
 
-        await expect(getWorkflowRuns()).rejects.toThrowError(
+        await expect(getWorkflowRuns()).rejects.toThrow(
           `Failed to get workflow runs, expected 200 but received ${errorStatus}`
         )
       })

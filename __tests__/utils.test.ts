@@ -1,9 +1,18 @@
-import {describe, expect, it, jest} from '@jest/globals'
-import {getBranchNameFromRef, getDispatchedWorkflowRun} from '.'
-import {v4 as uuid} from 'uuid'
-import {WorkflowRun} from '../api'
+/**
+ * Unit tests for the action's utilities, src/utils/index.ts
+ *
+ * To mock dependencies in ESM, mocks are declared via jest.unstable_mockModule
+ * before the module being tested is imported dynamically.
+ */
+import { describe, expect, it, jest } from '@jest/globals'
+import { randomUUID } from 'node:crypto'
+import * as core from '../__fixtures__/core.js'
+import type { WorkflowRun } from '../src/api/api.types.js'
 
-jest.mock('@actions/core')
+jest.unstable_mockModule('@actions/core', () => core)
+
+const { getBranchNameFromRef, getDispatchedWorkflowRun } =
+  await import('../src/utils/index.js')
 
 describe('utils', () => {
   describe('getBranchNameFromHeadRef', () => {
@@ -50,7 +59,7 @@ describe('utils', () => {
 
   describe('getDispatchedWorkflowRun', () => {
     const mockWorkflowName = 'Mock Workflow'
-    const distinctId = uuid()
+    const distinctId = randomUUID()
 
     it('should return the dispatched workflow run', () => {
       const mockWorkflowRuns: WorkflowRun[] = [
@@ -61,7 +70,7 @@ describe('utils', () => {
         },
         {
           id: 1,
-          name: `${mockWorkflowName} [${uuid()}]`,
+          name: `${mockWorkflowName} [${randomUUID()}]`,
           htmlUrl: 'http://github.com/1'
         }
       ]
@@ -79,20 +88,20 @@ describe('utils', () => {
       const mockWorkflowRuns: WorkflowRun[] = [
         {
           id: 1,
-          name: `${mockWorkflowName} [${uuid()}]`,
+          name: `${mockWorkflowName} [${randomUUID()}]`,
           htmlUrl: 'http://github.com/1'
         }
       ]
       expect(() =>
         getDispatchedWorkflowRun(mockWorkflowRuns, distinctId)
-      ).toThrowError()
+      ).toThrow()
     })
 
     it('should throw an error if no workflow runs are provided', () => {
       const mockWorkflowRuns: WorkflowRun[] = []
       expect(() =>
         getDispatchedWorkflowRun(mockWorkflowRuns, distinctId)
-      ).toThrowError()
+      ).toThrow()
     })
   })
 })
