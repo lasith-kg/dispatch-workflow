@@ -34248,59 +34248,15 @@ function getOctokit(token, options, ...additionalPlugins) {
     return new GitHubWithPlugins(getOctokitOptions(token));
 }
 
-function getBranchNameFromHeadRef(ref) {
-    const refItems = ref.split(/\/?refs\/heads\//);
-    if (refItems.length > 1 && refItems[1].length > 0) {
-        return refItems[1];
-    }
-}
-function isTagRef(ref) {
-    return new RegExp(/\/?refs\/tags\//).test(ref);
-}
-function getBranchNameFromRef(ref) {
-    if (!ref) {
-        return undefined;
-    }
-    if (isTagRef(ref)) {
-        debug(`Unable to filter branch, unsupported ref: ${ref}`);
-        return undefined;
-    }
-    /**
-     * Worst case scenario: return original ref if getBranchNameFromHeadRef
-     * cannot extract a valid branch name. This is to allow valid ref
-     * like 'main' to be supported by this function. The implication of this
-     * is that malformed ref like 'refs/heads/' are pass through this function
-     * undetected.
-     *
-     * We could introduce an external third party call to validate
-     * the authenticity of the branch name, but this requires additional permissions
-     * for workflow_dispatch: [actions:write -> contents:read + actions:write]
-     *
-     * This would be a neglibile issue for repository_dispatch as it already has
-     * [contents:write] permissions
-     */
-    return getBranchNameFromHeadRef(ref) || ref;
-}
-function getDispatchedWorkflowRun(workflowRuns, distinctID) {
-    const dispatchedWorkflow = workflowRuns.find((workflowRun) => workflowRun.name.includes(distinctID));
-    if (dispatchedWorkflow) {
-        return dispatchedWorkflow;
-    }
-    throw new Error(`
-getDispatchedWorkflowRun: Failed to find dispatched workflow
-Distinct ID: ${distinctID}`);
-}
-
 let config;
 let octokit;
 function init(cfg) {
     config = cfg || getConfig();
     octokit = getOctokit(config.token);
 }
-async function workflowDispatch(distinctId) {
+async function workflowDispatch() {
     const inputs = {
-        ...config.workflowInputs,
-        ...(config.discover ? { distinct_id: distinctId } : undefined)
+        ...config.workflowInputs
     };
     if (!config.workflow) {
         throw new Error(`workflow_dispatch: An input to 'workflow' was not provided`);
@@ -34308,31 +34264,33 @@ async function workflowDispatch(distinctId) {
     if (!config.ref) {
         throw new Error(`workflow_dispatch: An input to 'ref' was not provided`);
     }
-    // GitHub released a breaking change to the createWorkflowDispatch API that resulted in a change where the returned
-    // status code changed to 200, from 204. At the time, the @octokit/types had not been updated to reflect this change.
+    // When invoked with `return_run_details: true`, the createWorkflowDispatch API responds with a 200 status code and
+    // includes the ID of the dispatched workflow run in the response data. We temporarily cast the response because the
+    // `@octokit/types` library, as of v16.0.0, still does not recognise that this endpoint can return a 200 status code
+    // and the Run ID in the response data.
     //
-    // Given that we are in an interim state where the API behaviour, but the public documentation has not been updated
-    // to reflect this change, and GitHub has not yet released any updates on this topic. I can going to play the safe
-    // route and assume that the response status code could be either 200 or 204.
-    //
-    // Reference:     https://github.com/orgs/community/discussions/9752#discussioncomment-15295321
-    // Documentation: https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
+    // Reference:     https://github.blog/changelog/2026-02-19-workflow-dispatch-api-now-returns-run-ids/
+    // Documentation: https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event
     const response = (await octokit.rest.actions.createWorkflowDispatch({
         owner: config.owner,
         repo: config.repo,
         workflow_id: config.workflow,
         ref: config.ref,
-        inputs
+        inputs,
+        return_run_details: true
     }));
-    if (response.status !== 200 && response.status !== 204) {
-        throw new Error(`workflow_dispatch: Failed to dispatch action, expected 200 or 204 but received ${response.status}`);
+    if (response.status !== 200) {
+        throw new Error(`workflow_dispatch: Failed to dispatch action, expected 200 but received ${response.status}`);
     }
     info(`✅ Successfully dispatched workflow using workflow_dispatch method:
     repository: ${config.owner}/${config.repo}
     branch: ${config.ref}
     workflow-id: ${config.workflow}
-    distinct-id: ${distinctId}
     workflow-inputs: ${JSON.stringify(inputs)}`);
+    return {
+        id: response.data.workflow_run_id,
+        htmlUrl: response.data.html_url
+    };
 }
 async function repositoryDispatch(distinctId) {
     const clientPayload = {
@@ -34374,45 +34332,21 @@ async function getWorkflowId(workflowFilename) {
     return workflow.id;
 }
 async function getWorkflowRuns() {
-    let status;
-    let branchName;
-    let response;
-    if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
-        branchName = getBranchNameFromRef(config.ref);
-        if (!config.workflow) {
-            throw new Error(`An input to 'workflow' was not provided`);
-        }
-        // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-workflow
-        response = await octokit.rest.actions.listWorkflowRuns({
-            owner: config.owner,
-            repo: config.repo,
-            workflow_id: config.workflow,
-            ...(branchName
-                ? {
-                    branch: branchName,
-                    per_page: 5
-                }
-                : {
-                    per_page: 10
-                })
-        });
-        status = response.status;
-    }
-    else {
-        // repository_dipsatch can only be triggered from the default branch
-        const branchName = await getDefaultBranch();
-        // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
-        response = await octokit.rest.actions.listWorkflowRunsForRepo({
-            owner: config.owner,
-            repo: config.repo,
-            branch: branchName,
-            event: DispatchMethod.RepositoryDispatch,
-            per_page: 5
-        });
-        status = response.status;
-    }
-    if (status !== 200) {
-        throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${status}`);
+    // Discovery is only reachable for repository_dispatch. workflow_dispatch obtains the run details directly from the
+    // createWorkflowDispatch response (via `return_run_details`), so it never falls back to listing workflow runs.
+    //
+    // repository_dispatch can only be triggered from the default branch
+    const branchName = await getDefaultBranch();
+    // https://docs.github.com/en/rest/actions/workflow-runs#list-workflow-runs-for-a-repository
+    const response = await octokit.rest.actions.listWorkflowRunsForRepo({
+        owner: config.owner,
+        repo: config.repo,
+        branch: branchName,
+        event: DispatchMethod.RepositoryDispatch,
+        per_page: 5
+    });
+    if (response.status !== 200) {
+        throw new Error(`getWorkflowRuns: Failed to get workflow runs, expected 200 but received ${response.status}`);
     }
     const workflowRuns = response.data.workflow_runs.map((workflowRun) => ({
         id: workflowRun.id,
@@ -34422,7 +34356,7 @@ async function getWorkflowRuns() {
     debug(`
 Fetched Workflow Runs
 Repository: ${config.owner}/${config.repo}
-Branch: ${branchName || 'undefined'}
+Branch: ${branchName}
 Runs Fetched: [${workflowRuns.map((workflowRun) => workflowRun.id)}]`);
     return workflowRuns;
 }
@@ -34439,6 +34373,16 @@ Fetched Repository Information
 Repository: ${config.owner}/${config.repo}
 Default Branch: ${response.data.default_branch}`);
     return response.data.default_branch;
+}
+
+function getDispatchedWorkflowRun(workflowRuns, distinctID) {
+    const dispatchedWorkflow = workflowRuns.find((workflowRun) => workflowRun.name.includes(distinctID));
+    if (dispatchedWorkflow) {
+        return dispatchedWorkflow;
+    }
+    throw new Error(`
+getDispatchedWorkflowRun: Failed to find dispatched workflow
+Distinct ID: ${distinctID}`);
 }
 
 const DISTINCT_ID = randomUUID();
@@ -34460,9 +34404,10 @@ async function run() {
             info(`✅ Fetched workflow id: ${workflowId}`);
             config.workflow = workflowId;
         }
+        let workflowDispatch$1;
         // Dispatch the action using the chosen dispatch method
         if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
-            await workflowDispatch(DISTINCT_ID);
+            workflowDispatch$1 = await workflowDispatch();
         }
         else {
             await repositoryDispatch(DISTINCT_ID);
@@ -34472,17 +34417,18 @@ async function run() {
             info('✅ Workflow dispatched! Skipping the retrieval of the run-id');
             return;
         }
+        // Skip discovery process when workflow_dispatch invocation method is used
+        if (workflowDispatch$1) {
+            outputDiscoveryResults(workflowDispatch$1.id, workflowDispatch$1.htmlUrl);
+            return;
+        }
         info(`⌛ Fetching run-ids for workflow with distinct-id=${DISTINCT_ID}`);
         const dispatchedWorkflowRun = await backoffExports.backOff(async () => {
             const workflowRuns = await getWorkflowRuns();
             const dispatchedWorkflowRun = getDispatchedWorkflowRun(workflowRuns, DISTINCT_ID);
             return dispatchedWorkflowRun;
         }, backoffOptions);
-        info(`✅ Successfully identified remote run:
-    run-id: ${dispatchedWorkflowRun.id}
-    run-url: ${dispatchedWorkflowRun.htmlUrl}`);
-        setOutput(ActionOutputs.RunId, dispatchedWorkflowRun.id);
-        setOutput(ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl);
+        outputDiscoveryResults(dispatchedWorkflowRun.id, dispatchedWorkflowRun.htmlUrl);
     }
     catch (error) {
         if (error instanceof Error) {
@@ -34493,6 +34439,13 @@ async function run() {
             setFailed(`🔴 Failed to complete: ${error.message}`);
         }
     }
+}
+function outputDiscoveryResults(workflowId, workflowHtmlUrl) {
+    info(`✅ Successfully identified remote run:
+    run-id: ${workflowId}
+    run-url: ${workflowHtmlUrl}`);
+    setOutput(ActionOutputs.RunId, workflowId);
+    setOutput(ActionOutputs.RunUrl, workflowHtmlUrl);
 }
 run();
 //# sourceMappingURL=index.js.map

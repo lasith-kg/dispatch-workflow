@@ -101,43 +101,32 @@ describe('API', () => {
       init(mockActionConfig)
     })
 
-    // GitHub released a breaking change to the createWorkflowDispatch API that resulted in a change where the returned
-    // status code changed to 200, from 204.
-    //
-    // Given that we are in an interim state where the API behaviour, but the public documentation has not been updated
-    // to reflect this change, and GitHub has not yet released any updates on this topic. I can going to play the safe
-    // route and assume that the response status code could be either 200 or 204. I've added a test case that supports both
-    // potential status codes.
-    //
-    // Reference:     https://github.com/orgs/community/discussions/9752#discussioncomment-15295321
-    // Documentation: https://docs.github.com/en/rest/reference/actions#create-a-workflow-dispatch-event
-    it('should resolve after a successful dispatch with a 200 status', async () => {
+    // When createWorkflowDispatch API (version `2022-11-28`) is invoked with the `return_run_details: true`,
+    // it returns a 200 status code with the body of the response containing the ID of the dispatched workflow.
+    // Documentation: https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event
+    it('should return the dispatched workflow run details after a successful dispatch with a 200 status', async () => {
+      const mockData = {
+        workflow_run_id: 123456789,
+        run_url:
+          'https://api.github.com/repos/owner/repository/actions/runs/123456789',
+        html_url: 'https://github.com/owner/repository/actions/runs/123456789'
+      }
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         .mockReturnValue(
           Promise.resolve({
-            data: undefined,
+            data: mockData,
             status: 200
           })
         )
 
-      await workflowDispatch('')
+      expect(await workflowDispatch()).toStrictEqual({
+        id: mockData.workflow_run_id,
+        htmlUrl: mockData.html_url
+      })
     })
 
-    it('should resolve after a successful dispatch with a 204 status', async () => {
-      jest
-        .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
-        .mockReturnValue(
-          Promise.resolve({
-            data: undefined,
-            status: 204
-          })
-        )
-
-      await workflowDispatch('')
-    })
-
-    it('should throw if a non-204 status is returned', async () => {
+    it('should throw if a non-200 status is returned', async () => {
       const errorStatus = 401
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
@@ -148,57 +137,43 @@ describe('API', () => {
           })
         )
 
-      await expect(workflowDispatch('')).rejects.toThrow(
-        `Failed to dispatch action, expected 200 or 204 but received ${errorStatus}`
+      await expect(workflowDispatch()).rejects.toThrow(
+        `Failed to dispatch action, expected 200 but received ${errorStatus}`
       )
     })
 
-    it('should dispatch with a distinctId in the inputs', async () => {
-      const distinctId = randomUUID()
-      let dispatchedId: string | undefined
+    // Regression test: returning run details currently requires explicitly passing `return_run_details: true`. From the
+    // `2026-03-10` API version onwards this becomes the default behaviour and the flag no longer needs to be passed, so
+    // this test can be removed once we adopt that API version.
+    it('should pass return_run_details in the request', async () => {
+      let returnRunDetails: boolean | undefined
       jest
         .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .mockImplementation(async (req?: any) => {
-          dispatchedId = req.inputs.distinct_id
+          returnRunDetails = req.return_run_details
 
           return {
-            data: undefined,
+            data: {
+              workflow_run_id: 123456789,
+              run_url:
+                'https://api.github.com/repos/owner/repository/actions/runs/123456789',
+              html_url:
+                'https://github.com/owner/repository/actions/runs/123456789'
+            },
             status: 200
           }
         })
 
-      await workflowDispatch(distinctId)
-      expect(dispatchedId).toStrictEqual(distinctId)
-    })
-
-    it('should dispatch without a distinctId in the inputs if discover is set to false', async () => {
-      mockActionConfig.discover = false
-      init(mockActionConfig)
-
-      const distinctId = randomUUID()
-      let dispatchedId: string | undefined
-      jest
-        .spyOn(mockOctokit.rest.actions, 'createWorkflowDispatch')
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .mockImplementation(async (req?: any) => {
-          dispatchedId = req.inputs.distinct_id
-
-          return {
-            data: undefined,
-            status: 200
-          }
-        })
-
-      await workflowDispatch(distinctId)
-      expect(dispatchedId).toBeUndefined()
+      await workflowDispatch()
+      expect(returnRunDetails).toStrictEqual(true)
     })
 
     it('should throw if workflowDispatch is invoked without workflow configured', async () => {
       mockActionConfig.workflow = ''
       init(mockActionConfig)
 
-      await expect(workflowDispatch('')).rejects.toThrow(
+      await expect(workflowDispatch()).rejects.toThrow(
         `An input to 'workflow' was not provided`
       )
     })
@@ -207,7 +182,7 @@ describe('API', () => {
       mockActionConfig.ref = ''
       init(mockActionConfig)
 
-      await expect(workflowDispatch('')).rejects.toThrow(
+      await expect(workflowDispatch()).rejects.toThrow(
         `An input to 'ref' was not provided`
       )
     })
@@ -390,149 +365,69 @@ describe('API', () => {
     })
   })
 
+  // getWorkflowRuns discovery is only reachable for repository_dispatch. workflow_dispatch obtains the run details
+  // directly from the createWorkflowDispatch response, so it never lists workflow runs.
   describe('getWorkflowRuns', () => {
-    describe('workflowDispatch', () => {
-      beforeEach(() => {
-        mockActionConfig.dispatchMethod = DispatchMethod.WorkflowDispatch
-        mockActionConfig.workflow = 'workflow.yml'
-        mockActionConfig.eventType = ''
-        mockActionConfig.ref = 'refs/heads/feature_branch'
-        init(mockActionConfig)
-      })
+    beforeEach(() => {
+      mockActionConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
+      mockActionConfig.workflow = ''
+      mockActionConfig.eventType = 'deploy'
+      mockActionConfig.ref = ''
+      init(mockActionConfig)
 
-      it('should return the workflow runs for a valid configuration', async () => {
-        const mockData = {
-          workflow_runs: [
-            {
-              id: 0,
-              name: 'Apple',
-              html_url: 'http://github.com/0'
-            },
-            {
-              id: 1,
-              html_url: 'http://github.com/1'
-            }
-          ]
-        }
-
-        jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
-          .mockReturnValue(
-            Promise.resolve({
-              data: mockData,
-              status: 200
-            })
-          )
-
-        const workflowRuns = await getWorkflowRuns()
-        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
-      })
-
-      it('should return the workflow runs for a tags ref', async () => {
-        mockActionConfig.ref = 'refs/tags/v1.0.0'
-        init(mockActionConfig)
-
-        const mockData = {
-          workflow_runs: [
-            {
-              id: 0,
-              name: 'Apple',
-              html_url: 'http://github.com/0'
-            },
-            {
-              id: 1,
-              html_url: 'http://github.com/1'
-            }
-          ]
-        }
-
-        jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
-          .mockReturnValue(
-            Promise.resolve({
-              data: mockData,
-              status: 200
-            })
-          )
-
-        const workflowRuns = await getWorkflowRuns()
-        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
-      })
-
-      it('should throw if getWorkflowRuns is invoked without a workflow configured', async () => {
-        mockActionConfig.workflow = ''
-        init(mockActionConfig)
-
-        await expect(getWorkflowRuns()).rejects.toThrow(
-          `An input to 'workflow' was not provided`
-        )
-      })
+      jest.spyOn(mockOctokit.rest.repos, 'get').mockReturnValue(
+        Promise.resolve({
+          data: {
+            default_branch: 'main'
+          },
+          status: 200
+        })
+      )
     })
 
-    describe('repositoryDispatch', () => {
-      beforeEach(() => {
-        mockActionConfig.dispatchMethod = DispatchMethod.RepositoryDispatch
-        mockActionConfig.workflow = ''
-        mockActionConfig.eventType = 'deploy'
-        mockActionConfig.ref = ''
-        init(mockActionConfig)
+    it('should return the workflow runs for a valid configuration', async () => {
+      const mockData = {
+        workflow_runs: [
+          {
+            id: 0,
+            name: 'Apple',
+            html_url: 'http://github.com/0'
+          },
+          {
+            id: 1,
+            html_url: 'http://github.com/1'
+          }
+        ]
+      }
 
-        jest.spyOn(mockOctokit.rest.repos, 'get').mockReturnValue(
+      jest
+        .spyOn(mockOctokit.rest.actions, 'listWorkflowRunsForRepo')
+        .mockReturnValue(
           Promise.resolve({
-            data: {
-              default_branch: 'main'
-            },
+            data: mockData,
             status: 200
           })
         )
-      })
 
-      it('should return the workflow runs for a valid configuration', async () => {
-        const mockData = {
-          workflow_runs: [
-            {
-              id: 0,
-              name: 'Apple',
-              html_url: 'http://github.com/0'
-            },
-            {
-              id: 1,
-              html_url: 'http://github.com/1'
-            }
-          ]
-        }
-
-        jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRunsForRepo')
-          .mockReturnValue(
-            Promise.resolve({
-              data: mockData,
-              status: 200
-            })
-          )
-
-        const workflowRuns = await getWorkflowRuns()
-        expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
-      })
+      const workflowRuns = await getWorkflowRuns()
+      expect(workflowRuns.length).toStrictEqual(mockData.workflow_runs.length)
     })
 
-    describe('common', () => {
-      it('should throw if a non-200 status is returned', async () => {
-        const errorStatus = 404
+    it('should throw if a non-200 status is returned', async () => {
+      const errorStatus = 404
 
-        jest
-          .spyOn(mockOctokit.rest.actions, 'listWorkflowRuns')
-          .mockReturnValue(
-            Promise.resolve({
-              data: undefined,
-              status: errorStatus
-            })
-          )
-
-        await expect(getWorkflowRuns()).rejects.toThrow(
-          `Failed to get workflow runs, expected 200 but received ${errorStatus}`
+      jest
+        .spyOn(mockOctokit.rest.actions, 'listWorkflowRunsForRepo')
+        .mockReturnValue(
+          Promise.resolve({
+            data: undefined,
+            status: errorStatus
+          })
         )
-      })
+
+      await expect(getWorkflowRuns()).rejects.toThrow(
+        `Failed to get workflow runs, expected 200 but received ${errorStatus}`
+      )
     })
   })
 })

@@ -9,6 +9,7 @@ import {
 } from './action/index.js'
 import * as api from './api/index.js'
 import { getDispatchedWorkflowRun } from './utils/index.js'
+import { WorkflowDispatch } from './api/api.types.js'
 
 const DISTINCT_ID = randomUUID()
 
@@ -36,9 +37,11 @@ async function run(): Promise<void> {
       config.workflow = workflowId
     }
 
+    let workflowDispatch: WorkflowDispatch | undefined
+
     // Dispatch the action using the chosen dispatch method
     if (config.dispatchMethod === DispatchMethod.WorkflowDispatch) {
-      await api.workflowDispatch(DISTINCT_ID)
+      workflowDispatch = await api.workflowDispatch()
     } else {
       await api.repositoryDispatch(DISTINCT_ID)
     }
@@ -46,6 +49,12 @@ async function run(): Promise<void> {
     // Exit Early Early if discover is disabled
     if (!config.discover) {
       core.info('✅ Workflow dispatched! Skipping the retrieval of the run-id')
+      return
+    }
+
+    // Skip discovery process when workflow_dispatch invocation method is used
+    if (workflowDispatch) {
+      outputDiscoveryResults(workflowDispatch.id, workflowDispatch.htmlUrl)
       return
     }
 
@@ -61,12 +70,10 @@ async function run(): Promise<void> {
       )
       return dispatchedWorkflowRun
     }, backoffOptions)
-
-    core.info(`✅ Successfully identified remote run:
-    run-id: ${dispatchedWorkflowRun.id}
-    run-url: ${dispatchedWorkflowRun.htmlUrl}`)
-    core.setOutput(ActionOutputs.RunId, dispatchedWorkflowRun.id)
-    core.setOutput(ActionOutputs.RunUrl, dispatchedWorkflowRun.htmlUrl)
+    outputDiscoveryResults(
+      dispatchedWorkflowRun.id,
+      dispatchedWorkflowRun.htmlUrl
+    )
   } catch (error) {
     if (error instanceof Error) {
       core.warning('🟠 Does the token have the correct permissions?')
@@ -76,6 +83,14 @@ async function run(): Promise<void> {
       core.setFailed(`🔴 Failed to complete: ${error.message}`)
     }
   }
+}
+
+function outputDiscoveryResults(workflowId: number, workflowHtmlUrl: string) {
+  core.info(`✅ Successfully identified remote run:
+    run-id: ${workflowId}
+    run-url: ${workflowHtmlUrl}`)
+  core.setOutput(ActionOutputs.RunId, workflowId)
+  core.setOutput(ActionOutputs.RunUrl, workflowHtmlUrl)
 }
 
 run()

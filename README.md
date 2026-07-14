@@ -142,8 +142,8 @@ event. We then have the ability to **discover** the dispatched workflow, from
 all workflow runs, by correlating it to the **Distinct ID**.
 
 This functionality is **disabled by default**, but can be enabled with the
-`discover: true` configuration. The receiving workflow must then be modified
-appropriated to intercept the **Distinct ID**.
+`discover: true` configuration. The receiving workflow must then be modified to
+intercept the **Distinct ID**.
 
 ### Creating Dispatch Events with Discovery
 
@@ -164,31 +164,15 @@ steps:
 
 ### Receiving Events with Discovery
 
+#### `repository_dispatch`
+
 On September 26, 2022, GitHub introduced the ability to set
 [dynamic names for workflow runs](https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/).
 The new `run-name` attribute will accept expressions, thus allowing us to inject
 the **Distinct ID** into the queryable view.
 
-The expression to expose the **Distinct ID** in the `run-name` depends on what
-dispatch method you are using. The included expressions have been configured in
-a way to return a placeholder value `N/A` if a **Distinct ID** is not available.
-
-#### `workflow_dispatch`
-
-```yaml
-name: Workflow Name
-run-name:
-  Workflow Name [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
-
-on:
-  workflow_dispatch:
-    inputs:
-      distinct_id:
-        description: 'Distinct ID'
-        required: false
-```
-
-#### `repository_dispatch`
+The `run-name` expression below injects the **Distinct ID** into the queryable
+view, returning a placeholder value `N/A` if one is not available.
 
 ```yaml
 name: Workflow Name
@@ -201,6 +185,27 @@ on:
   repository_dispatch:
     types:
       - deploy
+```
+
+#### `workflow_dispatch`
+
+On February 19, 2026, GitHub
+[announced](https://github.blog/changelog/2026-02-19-workflow-dispatch-api-now-returns-run-ids/)
+that the response from the `createWorkflowDispatch` API would now include the ID
+of the dispatched workflow. Under the `2022-11-28` API version this behaviour is
+activated by passing `return_run_details: true` into the request payload. From
+the `2026-03-10` API version onwards it becomes the default and the flag no
+longer needs to be passed.
+
+When using `lasith-kg/dispatch-workflow@v3`, the `workflow_dispatch` invocation
+method **no longer requires** you to expose a distinct ID via the `run-name`
+attribute for workflow discovery.
+
+```yaml
+name: Workflow Name
+
+on:
+  workflow_dispatch:
 ```
 
 # Permissions
@@ -240,7 +245,7 @@ dispatch.
 | ---------------------------------------- | ----------------------------------- | --------------------------------------- |
 | `repository_dispatch`                    | `contents: write`                   | Private: `repo` / Public: `public_repo` |
 | `repository_dispatch` + `discover: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
-| `worflow_dispatch`                       | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| `workflow_dispatch`                      | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 | `workflow_dispatch` + `discover: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 
 # Inputs
@@ -406,4 +411,38 @@ work well for most scenarios.
       starting-delay-ms: 150
       max-attempts: 3
       time-multiple: 1.5
+```
+
+# Migrating from `v2` to `v3`
+
+If you have enabled discovery and use `workflow_dispatch` to invoke a child
+workflow, remove the `run-name` attribute and `distinct_id` input from the child
+workflow.
+
+```diff
+name: Parent Workflow
+
+jobs:
+  do-work:
+    steps:
+-     - uses: lasith-kg/dispatch-workflow@v2
++     - uses: lasith-kg/dispatch-workflow@v3
+        id: workflow-dispatch
+        name: 'Dispatch Workflow using workflow_dispatch Method'
+        with:
+          dispatch-method: workflow_dispatch
+          workflow: child-workflow.yml
+          ...
+```
+
+```diff
+name: Child Workflow
+- run-name: Child Workflow [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
+
+on:
+  workflow_dispatch:
+-   inputs:
+-     distinct_id:
+-       description: 'Distinct ID'
+-       required: false
 ```
