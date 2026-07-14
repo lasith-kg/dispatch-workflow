@@ -1,19 +1,34 @@
 # GitHub Action for Dispatching Workflows
 
-A **universal** action that supports dispatching workflows with either the `workflow_dispatch` or `repository_dispatch` event. Additionally, this action can be configured to **discover** the Run ID of a dispatched workflow through a **efficient** and **accurate** correlation algorithm.
+A **universal** action that supports dispatching workflows with either the
+`workflow_dispatch` or `repository_dispatch` event. Additionally, this action
+can be configured to **discover** the Run ID of a dispatched workflow through a
+**efficient** and **accurate** correlation algorithm.
 
-The latter algorithm was designed as a workaround for a [technical limitation](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203) that prevents the dispatch APIs from returning a Run ID.
+The latter algorithm was designed as a workaround for a
+[technical limitation](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203)
+that prevents the dispatch APIs from returning a Run ID.
 
 There was a need for this action as currently available actions...
 
-- Support the `workflow_dispatch` or `repository_dispatch` event, **but not both**
-- Use Run ID extraction algorithms that are either **API-intensive** or **unreliable** on repositories that experience a high velocity of workflows
+- Support the `workflow_dispatch` or `repository_dispatch` event, **but not
+  both**
+- Use Run ID extraction algorithms that are either **API-intensive** or
+  **unreliable** on repositories that experience a high velocity of workflows
 
 # Acknowledgements
 
-This GitHub Action is a fork of [`codex-/return-dispatch`](https://github.com/codex-/return-dispatch). This action supported the ability to extract a Run ID, but exclusively supported the `workflow_dispatch` method. I decided to fork this action as it had an intuitive code-base and excellent testing philosophy.
+This GitHub Action is a fork of
+[`codex-/return-dispatch`](https://github.com/codex-/return-dispatch). This
+action supported the ability to extract a Run ID, but exclusively supported the
+`workflow_dispatch` method. I decided to fork this action as it had an intuitive
+code-base and excellent testing philosophy.
 
-From a **compatibility** and **performance** perspective, this GitHub Action superseedes [`codex-/return-dispatch`](https://github.com/codex-/return-dispatch), as it additionally supports the `repository_dispatch` method and uses a more efficient algorithm to extract the Run ID for a dispatched workflow
+From a **compatibility** and **performance** perspective, this GitHub Action
+superseedes
+[`codex-/return-dispatch`](https://github.com/codex-/return-dispatch), as it
+additionally supports the `repository_dispatch` method and uses a more efficient
+algorithm to extract the Run ID for a dispatched workflow
 
 # Usage
 
@@ -23,7 +38,7 @@ From a **compatibility** and **performance** perspective, this GitHub Action sup
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v2
+  - uses: lasith-kg/dispatch-workflow@v3
     id: workflow-dispatch
     name: 'Dispatch Workflow using workflow_dispatch Method'
     with:
@@ -45,7 +60,7 @@ steps:
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v2
+  - uses: lasith-kg/dispatch-workflow@v3
     id: repository-dispatch
     name: 'Dispatch Workflow using repository_dispatch Method'
     with:
@@ -118,15 +133,15 @@ jobs:
 
 ## Discovery
 
-One of the drawbacks with both dispatch methods, is that they do not natively return a Run ID that allows us to query for the status of our dispatched workflow. This technical limitation is discussed more in-depth in this [community discussion](https://github.com/orgs/community/discussions/9752#discussioncomment-1964203). We can work around this by encorporating a **Distinct ID** into our dispatch event. We then have the ability to **discover** the dispatched workflow, from all workflow runs, by correlating it to the **Distinct ID**.
-
-This functionality is **disabled by default**, but can be enabled with the `discover: true` configuration. The receiving workflow must then be modified appropriated to intercept the **Distinct ID**.
+Workflow discovery is **disabled by default**, but can be enabled with the
+`discover: true` configuration. When enabled for `repository_dispatch`, the
+receiving workflow must be modified to intercept the **Distinct ID**.
 
 ### Creating Dispatch Events with Discovery
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v2
+  - uses: lasith-kg/dispatch-workflow@v3
     id: dispatch-with-discovery
     name: "Dispatch Workflow With Discovery"
     with:
@@ -141,25 +156,15 @@ steps:
 
 ### Receiving Events with Discovery
 
-On September 26, 2022, GitHub introduced the ability to set [dynamic names for workflow runs](https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/). The new `run-name` attribute will accept expressions, thus allowing us to inject the **Distinct ID** into the queryable view.
-
-The expression to expose the **Distinct ID** in the `run-name` depends on what dispatch method you are using. The included expressions have been configured in a way to return a placeholder value `N/A` if a **Distinct ID** is not available.
-
-#### `workflow_dispatch`
-
-```yaml
-name: Workflow Name
-run-name: Workflow Name [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
-
-on:
-  workflow_dispatch:
-    inputs:
-      distinct_id:
-        description: 'Distinct ID'
-        required: false
-```
-
 #### `repository_dispatch`
+
+On September 26, 2022, GitHub introduced the ability to set
+[dynamic names for workflow runs](https://github.blog/changelog/2022-09-26-github-actions-dynamic-names-for-workflow-runs/).
+The new `run-name` attribute will accept expressions, thus allowing us to inject
+the **Distinct ID** into the queryable view.
+
+The `run-name` expression below injects the **Distinct ID** into the queryable
+view, returning a placeholder value `N/A` if one is not available.
 
 ```yaml
 name: Workflow Name
@@ -174,9 +179,31 @@ on:
       - deploy
 ```
 
+#### `workflow_dispatch`
+
+On February 19, 2026, GitHub
+[announced](https://github.blog/changelog/2026-02-19-workflow-dispatch-api-now-returns-run-ids/)
+that the response from the `createWorkflowDispatch` API would now include the ID
+of the dispatched workflow. Under the `2022-11-28` API version this behaviour is
+activated by passing `return_run_details: true` into the request payload. From
+the `2026-03-10` API version onwards it becomes the default and the flag no
+longer needs to be passed.
+
+When using `lasith-kg/dispatch-workflow@v3`, the `workflow_dispatch` invocation
+method **no longer requires** you to expose a distinct ID via the `run-name`
+attribute for workflow discovery.
+
+```yaml
+name: Workflow Name
+
+on:
+  workflow_dispatch:
+```
+
 # Permissions
 
-Dispatching a Workflow requires an authenticated `GITHUB_TOKEN`. The required permissions for this `GITHUB_TOKEN` depends on the following factors...
+Dispatching a Workflow requires an authenticated `GITHUB_TOKEN`. The required
+permissions for this `GITHUB_TOKEN` depends on the following factors...
 
 - **Dispatch Method**: `repository_dispatch`, `workflow_dispatch`
 - **Discovery**: `true`, `false`
@@ -184,22 +211,33 @@ Dispatching a Workflow requires an authenticated `GITHUB_TOKEN`. The required pe
 
 ## Generating a `GITHUB_TOKEN`
 
-There are also multiple methods of generating `GITHUB_TOKEN`. If you are dispatching a workflow from the **current repository**, a **GitHub Actions Token** would be the most secure option. If you are dispatching a workflow to a **remote repository**, I would personally recommend a **GitHub App Token**. GitHub App Tokens are ephemeral (valid for 1 hour) and have fine grained access control over permissions and repositories. Additionally they are not bound to a particular developers identity, unlike a Personal Access Token.
+There are also multiple methods of generating `GITHUB_TOKEN`. If you are
+dispatching a workflow from the **current repository**, a **GitHub Actions
+Token** would be the most secure option. If you are dispatching a workflow to a
+**remote repository**, I would personally recommend a **GitHub App Token**.
+GitHub App Tokens are ephemeral (valid for 1 hour) and have fine grained access
+control over permissions and repositories. Additionally they are not bound to a
+particular developers identity, unlike a Personal Access Token.
 
 - Fine Grained Tokens
   - [GitHub Actions Token](https://docs.github.com/en/actions/security-guides/automatic-token-authentication)
   - [GitHub App Token](https://docs.github.com/en/apps/creating-github-apps/authenticating-with-a-github-app/making-authenticated-api-requests-with-a-github-app-in-a-github-actions-workflow)
   - [Personal Access Token 🆕](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/)
 - Personal Access Tokens (Classic)
-  - I would **strongly** advise using this as they are not as secure as it's [fine-grained replacement](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/) and can potentially be configured without an expiry time.
+  - I would **strongly** advise using this as they are not as secure as it's
+    [fine-grained replacement](https://github.blog/2022-10-18-introducing-fine-grained-personal-access-tokens-for-github/)
+    and can potentially be configured without an expiry time.
 
-The below table shows the neccessary permissions for all the unique combinations of these factors. If using a Fine Grained Token, ensure that the permissions correspond to the repository that contains the workflow you are attempting to dispatch.
+The below table shows the neccessary permissions for all the unique combinations
+of these factors. If using a Fine Grained Token, ensure that the permissions
+correspond to the repository that contains the workflow you are attempting to
+dispatch.
 
 | Mode                                     | Fine Grained Tokens                 | Personal Access Token (Classic)         |
 | ---------------------------------------- | ----------------------------------- | --------------------------------------- |
 | `repository_dispatch`                    | `contents: write`                   | Private: `repo` / Public: `public_repo` |
 | `repository_dispatch` + `discover: true` | `contents: write` + `actions: read` | Private: `repo` / Public: `public_repo` |
-| `worflow_dispatch`                       | `actions: write`                    | Private: `repo` / Public: `public_repo` |
+| `workflow_dispatch`                      | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 | `workflow_dispatch` + `discover: true`   | `actions: write`                    | Private: `repo` / Public: `public_repo` |
 
 # Inputs
@@ -221,7 +259,12 @@ The below table shows the neccessary permissions for all the unique combinations
 
 # Outputs
 
-By default, this GitHub Action has no outputs. However, when discovery mode is **enabled**, the Run ID and Run URL become exposed as outputs. With the Run ID, you can create some powerful automation where the parent workflow can wait for the status of the child workflow using the [`codex-/await-remote-run`](https://github.com/codex-/await-remote-run) GitHub Action.
+By default, this GitHub Action has no outputs. However, when discovery mode is
+**enabled**, the Run ID and Run URL become exposed as outputs. With the Run ID,
+you can create some powerful automation where the parent workflow can wait for
+the status of the child workflow using the
+[`codex-/await-remote-run`](https://github.com/codex-/await-remote-run) GitHub
+Action.
 
 | Name      | Description                                    |
 | --------- | ---------------------------------------------- |
@@ -230,7 +273,7 @@ By default, this GitHub Action has no outputs. However, when discovery mode is *
 
 ```yaml
 steps:
-  - uses: lasith-kg/dispatch-workflow@v2
+  - uses: lasith-kg/dispatch-workflow@v3
     id: wait-repository-dispatch
     name: 'Dispatch Using repository_dispatch Method And Wait For Run-ID'
     with:
@@ -253,31 +296,42 @@ steps:
 
 # Workflow Inputs
 
-This action supports the ability to provide workflow inputs for both the `repository_dispatch` and `workflow_dispatch` method. However, both methods have their unique limitations.
+This action supports the ability to provide workflow inputs for both the
+`repository_dispatch` and `workflow_dispatch` method. However, both methods have
+their unique limitations.
 
 ## `repository_dispatch`
 
-> Source: [peter-evans/repository-dispatch](https://github.com/peter-evans/repository-dispatch#client-payload) # Client Payload
+> Source:
+> [peter-evans/repository-dispatch](https://github.com/peter-evans/repository-dispatch#client-payload) #
+> Client Payload
 
-The [Create a repository dispatch event](https://docs.github.com/en/free-pro-team@latest/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-dispatch-event) API call allows a maximum of **10** top-level properties in the workflow inputs JSON. If you use more than that you will see an error message like the following.
+The
+[Create a repository dispatch event](https://docs.github.com/en/free-pro-team@latest/rest/repos/repos?apiVersion=2022-11-28#create-a-repository-dispatch-event)
+API call allows a maximum of **10** top-level properties in the workflow inputs
+JSON. If you use more than that you will see an error message like the
+following.
 
 ```
 No more than 10 properties are allowed; 14 were supplied.
 ```
 
-For example, this payload will fail because the `github` object has more than **10** top-level properties.
+For example, this payload will fail because the `github` object has more than
+**10** top-level properties.
 
 ```yaml
 workflow-inputs: ${{ toJson(github) }}
 ```
 
-A simple work-around is that you can simply wrap the payload in a single top-level property. The following payload will succeed.
+A simple work-around is that you can simply wrap the payload in a single
+top-level property. The following payload will succeed.
 
 ```yaml
 workflow-inputs: '{"github": ${{ toJson(github) }}}'
 ```
 
-Additionally, there is a limitation on the total data size of the client-payload. A very large payload may result in the following error
+Additionally, there is a limitation on the total data size of the
+client-payload. A very large payload may result in the following error
 
 ```
 client_payload is too large
@@ -285,14 +339,20 @@ client_payload is too large
 
 ## `workflow_dispatch`
 
-The [Create a workflow dispatch event](https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event) API call also sets the maximum number of top-level properties in the workflow inputs JSON to **10**. Any default properties configured in the workflow file will be considered towards this count when inputs are omitted.
+The
+[Create a workflow dispatch event](https://docs.github.com/en/rest/actions/workflows?apiVersion=2022-11-28#create-a-workflow-dispatch-event)
+API call also sets the maximum number of top-level properties in the workflow
+inputs JSON to **10**. Any default properties configured in the workflow file
+will be considered towards this count when inputs are omitted.
 
-An additional requirement is that all top-level properties **must** be a `string`. Any inputs represented as a `number` or `boolean` will get **rejected**. Therefore values of these
-types must be wrapped in **quotes** to successfully dispatch the workflow.
+An additional requirement is that all top-level properties **must** be a
+`string`. Any inputs represented as a `number` or `boolean` will get
+**rejected**. Therefore values of these types must be wrapped in **quotes** to
+successfully dispatch the workflow.
 
 ```yaml
 # Invalid ❌
-  - uses: lasith-kg/dispatch-workflow@v2
+  - uses: lasith-kg/dispatch-workflow@v3
     id: workflow-dispatch
     name: 'Dispatch Using workflow_dispatch Method'
     with:
@@ -305,7 +365,7 @@ types must be wrapped in **quotes** to successfully dispatch the workflow.
         }
 
 # Valid 🟢
-  - uses: lasith-kg/dispatch-workflow@v2
+  - uses: lasith-kg/dispatch-workflow@v3
     id: workflow-dispatch
     name: 'Dispatch Using workflow_dispatch Method'
     with:
@@ -322,14 +382,20 @@ types must be wrapped in **quotes** to successfully dispatch the workflow.
 
 ## Exponential Backoff
 
-When interacting with the GitHub REST API, it's beneficial to handle potential flakiness by employing exponential backoff. This action allows users to customize this behavior through optional parameters, although the default values work well for most scenarios.
+When interacting with the GitHub REST API, it's beneficial to handle potential
+flakiness by employing exponential backoff. This action allows users to
+customize this behavior through optional parameters, although the default values
+work well for most scenarios.
 
-- `starting-delay-ms`: The initial delay, in milliseconds, before the first API call attempt.
-- `max-attempts`: The maximum number of times to attempt read-only GitHub API requests.
-- `time-multiple`: The factor by which the `starting-delay-ms` is multiplied for each reattempt, influencing the delay duration.
+- `starting-delay-ms`: The initial delay, in milliseconds, before the first API
+  call attempt.
+- `max-attempts`: The maximum number of times to attempt read-only GitHub API
+  requests.
+- `time-multiple`: The factor by which the `starting-delay-ms` is multiplied for
+  each reattempt, influencing the delay duration.
 
 ```yaml
-  - uses: lasith-kg/dispatch-workflow@v2
+  - uses: lasith-kg/dispatch-workflow@v3
     id: custom-backoff
     name: 'Dispatch with custom exponential backoff parameters'
     with:
@@ -337,4 +403,43 @@ When interacting with the GitHub REST API, it's beneficial to handle potential f
       starting-delay-ms: 150
       max-attempts: 3
       time-multiple: 1.5
+```
+
+# Migrating from `v2` to `v3`
+
+If you have enabled discovery and use `workflow_dispatch` to invoke a child
+workflow, remove the `run-name` attribute and `distinct_id` input from the child
+workflow.
+
+> **Upgrade the parent workflow first, then the child.** Once on `@v3` the
+> parent stops sending `distinct_id`. If the child hasn't been updated yet, its
+> run name renders as `Child Workflow [N/A]` — purely cosmetic, with no impact
+> on behaviour.
+
+```diff
+name: Parent Workflow
+
+jobs:
+  do-work:
+    steps:
+-     - uses: lasith-kg/dispatch-workflow@v2
++     - uses: lasith-kg/dispatch-workflow@v3
+        id: workflow-dispatch
+        name: 'Dispatch Workflow using workflow_dispatch Method'
+        with:
+          dispatch-method: workflow_dispatch
+          workflow: child-workflow.yml
+          ...
+```
+
+```diff
+name: Child Workflow
+- run-name: Child Workflow [${{ inputs.distinct_id && inputs.distinct_id || 'N/A' }}]
+
+on:
+  workflow_dispatch:
+-   inputs:
+-     distinct_id:
+-       description: 'Distinct ID'
+-       required: false
 ```

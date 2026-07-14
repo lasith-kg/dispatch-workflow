@@ -19,28 +19,17 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # Need history for changelog generation
-          token: "${{ secrets.ACTIONS_BOT_TOKEN }}"
+          token: '${{ secrets.ACTIONS_BOT_TOKEN }}'
       - id: config-git
         name: Config Git
         shell: bash
         run: |
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-      - id: nvmrc 
-        name: Extract Node.JS Version
-        shell: bash
-        run: |
-          echo "node-version=$(cat .nvmrc)" >> "${GITHUB_OUTPUT}"
       - name: Set Node.JS
         uses: actions/setup-node@v4
         with:
-          node-version: "${{ steps.nvmrc.outputs.node-version }}"
-      - id: clean-dist
-        shell: bash
-        run: |
-          # Clean the existing dist/ folder so that we only release fresh
-          # compiled code
-          rm -rf dist/
+          node-version-file: .node-version
       - run: |
           npm ci
       - run: |
@@ -51,7 +40,7 @@ jobs:
             ${{ github.event.inputs.version }} \
             --ci
         env:
-          GITHUB_TOKEN: "${{ secrets.ACTIONS_BOT_TOKEN }}"
+          GITHUB_TOKEN: '${{ secrets.ACTIONS_BOT_TOKEN }}'
       - name: Push Compact Tag
         id: update-compact-tag
         run: |

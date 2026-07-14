@@ -4,28 +4,23 @@ on: # rebuild any PRs and main branch changes
   workflow_dispatch:
   push:
     branches:
-      - "main"
+      - 'main'
 
-jobs:  
+jobs:
   integration-tests:
     runs-on: ubuntu-latest
     permissions:
       contents: write
       actions: write
     env:
-      INTEGRATION_TEST_WORKFLOW_FILE: "integration-tests.yml"
+      INTEGRATION_TEST_WORKFLOW_FILE: 'integration-tests.yml'
       INTEGRATION_TEST_WORKFLOW_ID: 64701969 # This ID Will Change On Fork
     steps:
       - uses: actions/checkout@v4
-      - id: nvmrc 
-        name: Extract Node.JS Version
-        shell: bash
-        run: |
-          echo "node-version=$(cat .nvmrc)" >> "${GITHUB_OUTPUT}"
       - name: Set Node.JS
         uses: actions/setup-node@v4
         with:
-          node-version: "${{ steps.nvmrc.outputs.node-version }}"
+          node-version-file: .node-version
       - id: clean-dist
         shell: bash
         run: |
@@ -38,42 +33,48 @@ jobs:
           npm run all
       - uses: ./
         id: fail-ref-workflow-dispatch
-        name: "Dispatch Workflow using workflow_dispatch Method, to a Non-existent Branch"
+        name:
+          'Dispatch Workflow using workflow_dispatch Method, to a Non-existent
+          Branch'
         continue-on-error: true
         with:
-          dispatch-method: "workflow_dispatch"
-          repo: "${{ github.event.repository.name }}"
-          owner: "${{ github.repository_owner }}"
-          ref: "non-existent-branch/${{ github.run_id }}" # This branch cannot realistically exist
-          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}"
-          token: "${{ secrets.GITHUB_TOKEN }}"
+          dispatch-method: 'workflow_dispatch'
+          repo: '${{ github.event.repository.name }}'
+          owner: '${{ github.repository_owner }}'
+          ref: 'non-existent-branch/${{ github.run_id }}' # This branch cannot realistically exist
+          workflow: '${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}'
+          token: '${{ secrets.GITHUB_TOKEN }}'
           workflow-inputs: '{"placeholder": "placeholder"}'
       - uses: ./
         id: fail-file-workflow-dispatch
-        name: "Dispatch Workflow using workflow_dispatch Method, to a Non-existent Workflow File"
+        name:
+          'Dispatch Workflow using workflow_dispatch Method, to a Non-existent
+          Workflow File'
         continue-on-error: true
         with:
-          dispatch-method: "workflow_dispatch"
-          repo: "${{ github.event.repository.name }}"
-          owner: "${{ github.repository_owner }}"
-          ref: "main"
-          workflow: "${{ github.run_id }}.yml" # This workflow file cannot realistically exist
-          token: "${{ secrets.GITHUB_TOKEN }}"
+          dispatch-method: 'workflow_dispatch'
+          repo: '${{ github.event.repository.name }}'
+          owner: '${{ github.repository_owner }}'
+          ref: 'main'
+          workflow: '${{ github.run_id }}.yml' # This workflow file cannot realistically exist
+          token: '${{ secrets.GITHUB_TOKEN }}'
           workflow-inputs: '{"placeholder": "placeholder"}'
       - uses: ./
         id: fail-inputs-workflow-dispatch
-        name: "Dispatch Workflow using workflow_dispatch Method, with an unsupported workflow inputs"
+        name:
+          'Dispatch Workflow using workflow_dispatch Method, with an unsupported
+          workflow inputs'
         continue-on-error: true
         with:
-          dispatch-method: "workflow_dispatch"
-          repo: "${{ github.event.repository.name }}"
-          owner: "${{ github.repository_owner }}"
-          ref: "main"
-          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}"
-          token: "${{ secrets.GITHUB_TOKEN }}"
+          dispatch-method: 'workflow_dispatch'
+          repo: '${{ github.event.repository.name }}'
+          owner: '${{ github.repository_owner }}'
+          ref: 'main'
+          workflow: '${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}'
+          token: '${{ secrets.GITHUB_TOKEN }}'
           workflow-inputs: '{"placeholder": 0}' # 0 is not a string type
       - id: verify-fail-workflow-dispatch
-        name: "Verify Action Outputs for worflow-dispatch"
+        name: 'Verify Action Outputs for worflow-dispatch'
         shell: bash
         run: |
           set -euo pipefail
@@ -91,14 +92,14 @@ jobs:
           fi
       - uses: ./
         id: workflow-dispatch
-        name: "Dispatch Using workflow_dispatch Method"
+        name: 'Dispatch Using workflow_dispatch Method'
         with:
-          dispatch-method: "workflow_dispatch"
-          repo: "${{ github.event.repository.name }}"
-          owner: "${{ github.repository_owner }}"
-          ref: "refs/heads/main"
-          workflow: "${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}"
-          token: "${{ secrets.GITHUB_TOKEN }}"
+          dispatch-method: 'workflow_dispatch'
+          repo: '${{ github.event.repository.name }}'
+          owner: '${{ github.repository_owner }}'
+          ref: 'refs/heads/main'
+          workflow: '${{ env.INTEGRATION_TEST_WORKFLOW_FILE }}'
+          token: '${{ secrets.GITHUB_TOKEN }}'
           workflow-inputs: |
             {
               "string-type": "placeholder",
@@ -107,13 +108,15 @@ jobs:
             }
       - uses: ./
         id: repository-dispatch-custom-backoff
-        name: "Dispatch Using repositroy_dispatch Method and custom exponential backoff parameters"
+        name:
+          'Dispatch Using repositroy_dispatch Method and custom exponential
+          backoff parameters'
         with:
-          dispatch-method: "repository_dispatch"
-          event-type: "repository-dispatch"
-          repo: "${{ github.event.repository.name }}"
-          owner: "${{ github.repository_owner }}"
-          token: "${{ secrets.GITHUB_TOKEN }}"
+          dispatch-method: 'repository_dispatch'
+          event-type: 'repository-dispatch'
+          repo: '${{ github.event.repository.name }}'
+          owner: '${{ github.repository_owner }}'
+          token: '${{ secrets.GITHUB_TOKEN }}'
           workflow-inputs: |
             {
               "string-type": "placeholder",
@@ -127,13 +130,13 @@ jobs:
           time-multiple: 1.5
       - uses: ./
         id: wait-repository-dispatch
-        name: "Dispatch Using repository_dispatch Method And Wait For Run-ID"
+        name: 'Dispatch Using repository_dispatch Method And Wait For Run-ID'
         with:
-          dispatch-method: "repository_dispatch"
-          event-type: "repository-dispatch"
-          repo: "${{ github.event.repository.name }}"
-          owner: "${{ github.repository_owner }}"
-          token: "${{ secrets.GITHUB_TOKEN }}"
+          dispatch-method: 'repository_dispatch'
+          event-type: 'repository-dispatch'
+          repo: '${{ github.event.repository.name }}'
+          owner: '${{ github.repository_owner }}'
+          token: '${{ secrets.GITHUB_TOKEN }}'
           workflow-inputs: |
             {
               "string-type": "placeholder",
@@ -152,7 +155,7 @@ jobs:
           owner: ${{ github.repository_owner }}
           run_id: ${{ steps.wait-repository-dispatch.outputs.run-id }}
       - id: verify-repository-dispatch-outputs
-        name: "Verify Action Outputs for repository-dispatch"
+        name: 'Verify Action Outputs for repository-dispatch'
         shell: bash
         run: |
           set -euo pipefail

@@ -4,8 +4,8 @@ import {
   ActionWorkflowInputs,
   DispatchMethod,
   ExponentialBackoff
-} from './action.types'
-import {BackoffOptions} from 'exponential-backoff'
+} from './action.types.js'
+import { BackoffOptions } from 'exponential-backoff'
 
 function getNumberFromValue(value: string): number | undefined {
   const num = parseFloat(value)
@@ -55,7 +55,7 @@ Expected Type: string
 }
 
 function getDispatchMethod(): DispatchMethod {
-  const dispatchMethod = core.getInput('dispatch-method', {required: true})
+  const dispatchMethod = core.getInput('dispatch-method', { required: true })
   try {
     if (
       Object.values(DispatchMethod).includes(dispatchMethod as DispatchMethod)
@@ -130,8 +130,8 @@ The 'workflow' input is not supported for the repository_dispatch method and mus
     }
   } catch (error) {
     core.error(`Failed to parse input: workflow`)
-    if (error instanceof Error) {
-      error.stack && core.debug(error.stack)
+    if (error instanceof Error && error.stack) {
+      core.debug(error.stack)
     }
     throw error
   }
@@ -147,9 +147,9 @@ export function getConfig(): ActionConfig {
 
   return {
     dispatchMethod,
-    repo: core.getInput('repo', {required: true}),
-    owner: core.getInput('owner', {required: true}),
-    token: core.getInput('token', {required: true}),
+    repo: core.getInput('repo', { required: true }),
+    owner: core.getInput('owner', { required: true }),
+    token: core.getInput('token', { required: true }),
     ref: getRef(dispatchMethod),
     workflow: getWorkflow(dispatchMethod),
     eventType: getEventType(dispatchMethod),
@@ -175,4 +175,4 @@ export function getBackoffOptions(config: ActionConfig): BackoffOptions {
   }
 }
 
-export * from './action.types'
+export * from './action.types.js'
