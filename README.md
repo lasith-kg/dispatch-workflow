@@ -411,6 +411,11 @@ If you have enabled discovery and use `workflow_dispatch` to invoke a child
 workflow, remove the `run-name` attribute and `distinct_id` input from the child
 workflow.
 
+> **Upgrade the parent workflow first, then the child.** Once on `@v3` the
+> parent stops sending `distinct_id`. If the child hasn't been updated yet, its
+> run name renders as `Child Workflow [N/A]` — purely cosmetic, with no impact
+> on behaviour.
+
 ```diff
 name: Parent Workflow
 
